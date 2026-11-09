@@ -183,7 +183,7 @@ const CalcolaTimeLine: React.FC<ScreenProps> = ({ setPage }) => {
             Test Standalone
           </span>
           <h2 className="text-2xl font-serif font-black text-gray-900">Test Time Line (Linea del Tempo)</h2>
-          <h3 className="text-sm font-medium text-gray-600">Calcolo dell'Evento Causa, PU, PT e Diagnosi Analogica</h3>
+          <h3 className="text-sm font-medium text-gray-600">Calcolo dell'Evento Causa, PU, PT e Lettura Analogica</h3>
         </div>
         <button
           onClick={handleExit}
@@ -282,7 +282,7 @@ const CalcolaTimeLine: React.FC<ScreenProps> = ({ setPage }) => {
               <p className="text-xl font-bold text-purple-700">{currentTimeline.PT} anni</p>
             </div>
             <div className="p-3 bg-white rounded-xl border border-blue-100 shadow-sm">
-              <span className="text-[10px] uppercase font-bold text-slate-500">Diagnosi</span>
+              <span className="text-[10px] uppercase font-bold text-slate-500">Lettura Analogica</span>
               <p className="text-sm font-bold text-emerald-700 mt-1">{currentTimeline.diagnosi || 'Equilibrio'}</p>
             </div>
           </div>

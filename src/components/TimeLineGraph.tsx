@@ -67,7 +67,7 @@ const TimeLineGraph: React.FC<TimeLineGraphProps> = ({ age, PU, PT, eventAge, di
             </div>
             {diagnosis && (
                  <div className="text-center mt-2">
-                     <span className="text-xs font-medium text-gray-500">Diagnosi: </span>
+                     <span className="text-xs font-medium text-gray-500">Lettura Analogica: </span>
                      <span className="text-sm font-bold" style={{ color: diagnosisColor }}>{diagnosis}</span>
                  </div>
             )}
