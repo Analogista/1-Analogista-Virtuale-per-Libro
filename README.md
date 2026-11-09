@@ -1,0 +1,1 @@
+# Analogista Virtuale per Libro
