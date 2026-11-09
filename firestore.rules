@@ -1,0 +1,89 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helpers ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isEmailVerified() {
+      // Google Auth usually provides this, but we check explicitly for the admin email
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isAdmin() {
+      // CRITICAL: Dedicated check for the specialist's email
+      return isSignedIn() && 
+             request.auth.token.email == 'analogistabrindisi@gmail.com' && 
+             isEmailVerified();
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+    
+    function isValidId(id) { 
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); 
+    }
+
+    // --- Validations ---
+    function isValidSession(data) {
+      return data.keys().hasAll(['userId', 'createdAt', 'status']) &&
+             data.userId is string && data.userId.size() <= 128 &&
+             data.status in ['in_progress', 'completed'] &&
+             (!('userName' in data) || (data.userName is string && data.userName.size() <= 200)) &&
+             (!('data' in data) || data.data is map);
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['email', 'role']) &&
+             data.email is string && data.email.size() <= 255 &&
+             data.role in ['user', 'admin'];
+    }
+
+    // --- Collections ---
+
+    // Sessions
+    match /sessions/{sessionId} {
+      allow get: if isSignedIn() && (isAdmin() || resource.data.userId == request.auth.uid);
+      
+      // Admin sees everything; users see only theirs.
+      // Every allow list block MUST explicitly evaluate resource.data to prevent unauthorized scraping.
+      allow list: if isSignedIn() && (isAdmin() || resource.data.userId == request.auth.uid);
+
+      allow create: if isSignedIn() && 
+                    isValidSession(request.resource.data) && 
+                    request.resource.data.userId == request.auth.uid &&
+                    request.resource.data.createdAt == request.time;
+                    
+      allow update: if isSignedIn() && 
+                    (isAdmin() || resource.data.userId == request.auth.uid) &&
+                    isValidSession(request.resource.data) &&
+                    request.resource.data.userId == resource.data.userId &&
+                    request.resource.data.createdAt == resource.data.createdAt;
+
+      allow delete: if isAdmin();
+    }
+
+    
+    // Feedback
+    match /feedback/{feedbackId} {
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow read: if isAdmin();
+    }
+
+    // Users
+    match /users/{userId} {
+      allow get: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId) && isValidUser(request.resource.data) && request.resource.data.role == 'user';
+      allow update: if isOwner(userId) && isValidUser(request.resource.data) && 
+                    request.resource.data.role == resource.data.get('role', 'user'); // Prevent self-promoting
+      allow list: if isAdmin();
+    }
+  }
+}

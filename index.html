@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="author" content="Max Pisani - PACommunication" />
+    <meta name="copyright" content="© 2026 Max Pisani - PACommunication. Tutti i diritti riservati." />
+    <!-- Standard Referrer Policy -->
+    <meta name="referrer" content="no-referrer-when-downgrade">
+    <meta name="theme-color" content="#2563EB">
+    <link rel="manifest" href="/manifest.json">
+    <title>Analogista Virtuale di Max Pisani</title>
+    
+    <!-- Google Fonts: Merriweather per i titoli (Eleganza/Psicologia) e Inter per i testi (Leggibilità) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Merriweather:ital,wght@0,300;0,400;0,700;0,900;1,300;1,400&display=swap" rel="stylesheet">
+    
+    <!-- Styles handled by Vite/index.css -->
+    <style>
+      body {
+        font-family: 'Inter', sans-serif;
+      }
+      h1, h2, h3, h4, h5, h6 {
+        font-family: 'Merriweather', serif;
+      }
+      @keyframes bounce-short {
+        0%, 100% {
+          transform: translateY(0);
+          animation-timing-function: cubic-bezier(0.8, 0, 1, 1);
+        }
+        50% {
+          transform: translateY(-15%);
+          animation-timing-function: cubic-bezier(0, 0, 0.2, 1);
+        }
+      }
+      .animate-bounce-short {
+        animation: bounce-short 1.5s infinite;
+      }
+      @media print {
+        body {
+            background-color: white;
+        }
+        nav, header, .no-print, button {
+            display: none !important;
+        }
+        #root {
+            padding: 0 !important;
+            max-width: 100% !important;
+        }
+        main {
+            padding: 0 !important;
+        }
+        /* Reset Result Card styles for cleaner print */
+        .shadow-md, .shadow-lg {
+            box-shadow: none !important;
+        }
+        .bg-gray-50 {
+            background-color: white !important;
+        }
+      }
+</style>
+</head>
+  <body class="bg-slate-50">
+    <div id="root"></div>
+    <script type="module" src="/src/index.tsx"></script>
+  </body>
+</html>

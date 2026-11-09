@@ -1,0 +1,8 @@
+{
+  "name": " Analogista Virtuale per Libro",
+  "description": "Un’applicazione web interattiva basata sulle discipline analogiche di Stefano Benemeglio, progettata da Massimo Pisani. Questa app guida gli utenti attraverso una serie di test per dialogare con il loro inconscio, individuare i blocchi e comprendere il proprio stato emotivo.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
