@@ -3,7 +3,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../contexts/UserContext';
 import { useHeader } from '../contexts/HeaderContext';
-import { useAuth } from '../contexts/AuthContext';
 
 import ChiSono from './ChiSono';
 import Introduzione from './Introduzione';
@@ -15,12 +14,10 @@ import TestInduttore from './TestInduttore';
 import TestNome from './TestNome';
 import TestPuntiDistonici from './TestPuntiDistonici';
 import TestSigilliVincoli from './TestSigilliVincoli';
-import CalcolaTimeLine from './CalcolaTimeLine';
 import IndagineSingola from './IndagineSingola';
 import QualeGiorno from './QualeGiorno';
 import TestimoneChiave from './TestimoneChiave';
-import { FeedbackForm } from '../components/FeedbackForm';
-import AdminFeedback from './AdminFeedback';
+import { AdvancedVoiceService } from '../services/AdvancedVoiceService';
 
 interface ScreenProps {
   setPage: (page: number | string) => void;
@@ -56,7 +53,6 @@ const tests: TestItem[] = [
   { id: 'sigilli', title: 'Test Sigilli e Vincoli', description: 'Colpa, abbandono, disistima, giudizio degli altri', component: TestSigilliVincoli, icon: '🔐' },
 
   // Linea del Tempo & Indagini nel Tempo
-  { id: 'timeLine', title: 'Test Time Line', description: 'Calcolo dell\'età evento causa, PU, PT e grafico analogico', component: CalcolaTimeLine, icon: '🧭' },
   { id: 'indagineSingola', title: 'Indietro nel Tempo (Grande Indagine)', description: 'Ciclo completo: Età, Giorno esatto, Testimone e Torto', component: IndagineSingola, icon: '⏳' },
   { id: 'qualeGiorno', title: 'Test Quale Giorno', description: 'Ricerca autonoma della stagione, mese e giorno dell\'evento', component: QualeGiorno, icon: '📅' },
   { id: 'testimone', title: 'Testimone Chiave', description: 'Ricerca della figura di riferimento collegata all\'evento causa', component: TestimoneChiave, icon: '👤' },
@@ -64,18 +60,13 @@ const tests: TestItem[] = [
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
-  const { isAdmin } = useAuth();
   const { userData, setAudioEnabled } = useUser();
   const [activeTest, setActiveTest] = useState<string | null>(null);
   const { setHeader, setProMode } = useHeader();
 
   useEffect(() => {
+    AdvancedVoiceService.stopAll();
     if (activeTest) {
-      if (activeTest === 'adminFeedback') {
-        setHeader('Feedback Utenti', 'Area Riservata Amministratore');
-        setProMode(false);
-        return;
-      }
       const test = tests.find(t => t.id === activeTest);
       if (test) {
         setHeader(test.title, test.description);
@@ -84,9 +75,13 @@ const Dashboard: React.FC = () => {
     } else {
       setProMode(false);
     }
+    return () => {
+      AdvancedVoiceService.stopAll();
+    };
   }, [activeTest, setHeader, setProMode]);
 
   const handleNavigation = useCallback((destination: number | string) => {
+    AdvancedVoiceService.stopAll();
     setAudioEnabled(false);
     if (typeof destination === 'string') {
       if (destination === '/risultati') {
@@ -111,9 +106,6 @@ const Dashboard: React.FC = () => {
   const progressPercent = Math.min(100, Math.round((completedCount / totalCount) * 100));
 
   if (activeTest) {
-    if (activeTest === 'adminFeedback') {
-      return <AdminFeedback setPage={handleNavigation} />;
-    }
     const current = tests.find(t => t.id === activeTest);
     if (!current) return null;
     const TestComponent = current.component;
@@ -126,7 +118,7 @@ const Dashboard: React.FC = () => {
   
   // Raggruppamento per categorie chiare
   const coreAnalogicTests = tests.filter(t => ['tap', 'induttore', 'nome', 'puntiDistonici', 'sigilli'].includes(t.id));
-  const timelineTests = tests.filter(t => ['timeLine', 'indagineSingola', 'qualeGiorno', 'testimone'].includes(t.id));
+  const timelineTests = tests.filter(t => ['indagineSingola', 'qualeGiorno', 'testimone'].includes(t.id));
   const prepTests = tests.filter(t => t.id === 'calibrazione');
 
   return (
@@ -354,27 +346,6 @@ const Dashboard: React.FC = () => {
           ))}
         </div>
       </section>
-
-      {/* Feedback Amministratore */}
-      {isAdmin && (
-        <section className="mt-4">
-          <button
-            onClick={() => setActiveTest('adminFeedback')}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 px-6 rounded-xl shadow-md border border-blue-500 transition-all flex items-center justify-between"
-          >
-            <div className="flex items-center gap-3">
-              <span className="text-xl">🛡️</span>
-              <div className="text-left">
-                <h3 className="text-sm font-bold">Feedback Utenti</h3>
-                <p className="text-[11px] text-blue-100">Area Riservata Amministratore</p>
-              </div>
-            </div>
-            <span className="text-xs font-bold uppercase tracking-wider">Accedi &rarr;</span>
-          </button>
-        </section>
-      )}
-
-      {!activeTest && <FeedbackForm />}
     </div>
   );
 };

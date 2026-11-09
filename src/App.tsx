@@ -1,6 +1,6 @@
 
 /* © 2026 Max Pisani - PACommunication. Tutti i diritti riservati. */
-import React, { useState } from 'react';
+import React from 'react';
 import { Routes, Route, useLocation } from 'react-router-dom';
 import { UserProvider } from './contexts/UserContext';
 import { HeaderProvider, useHeader } from './contexts/HeaderContext';
@@ -14,7 +14,7 @@ import Risultati from './screens/Risultati';
 import Contatti from './screens/Contatti';
 import VideoCorso from './screens/LiveChat';
 import History from './screens/History';
-import WelcomeBanner from './components/WelcomeBanner';
+import { AdvancedVoiceService } from './services/AdvancedVoiceService';
 
 import { AuthGate } from './components/AuthGate';
 import { Toaster } from 'react-hot-toast';
@@ -37,12 +37,12 @@ const App: React.FC = () => {
 };
 
 const AppContent: React.FC = () => {
-  const [showWelcome, setShowWelcome] = useState(true);
   const { isProMode, setHeader, setProMode } = useHeader();
   const location = useLocation();
   
-  // Gestione centralizzata degli header per evitare stati inconsistenti tra le rotte
+  // Gestione centralizzata degli header e spegnimento di qualsiasi voce guida attiva al cambio rotta
   React.useEffect(() => {
+    AdvancedVoiceService.stopAll();
     const path = location.pathname;
     
     // Non aggiorniamo l'header se siamo in Pro Mode (test attivo) perché lo gestisce il test stesso
@@ -72,9 +72,6 @@ const AppContent: React.FC = () => {
   
   return (
     <>
-      {/* Banner Iniziale Importante */}
-      {showWelcome && !isProMode && <WelcomeBanner onClose={() => setShowWelcome(false)} />}
-
       {/* Wrapper Esterno: Gradiente standard o Dark Mode Pro */}
       <div className={`min-h-screen font-sans transition-colors duration-500 ease-in-out ${
         isProMode ? 'bg-[#0a0a0c] text-white' : 'bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 text-gray-800'

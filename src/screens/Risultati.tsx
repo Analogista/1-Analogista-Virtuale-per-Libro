@@ -1,9 +1,10 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { useHeader } from '../contexts/HeaderContext';
 import { useUser } from '../contexts/UserContext';
+import { useApiKey } from '../contexts/ApiKeyContext';
 import { useAuth } from '../contexts/AuthContext';
 import TimeLineGraph from '../components/TimeLineGraph';
+import { GoogleGenAI } from '@google/genai';
 import { useNavigate } from 'react-router-dom';
 import { jsPDF } from 'jspdf';
 import { ANALOGISTA_KNOWLEDGE } from '../utils/knowledgeBase';
@@ -89,18 +90,32 @@ const SimpleRadarChart: React.FC<{ data: { subject: string; A: number; fullMark:
 
 const Risultati: React.FC<ScreenProps> = () => {
   const { userData } = useUser();
-  const { setHeader } = useHeader();
+  const { apiKey, setApiKey } = useApiKey();
   const { user } = useAuth();
   const navigate = useNavigate();
   const [aiMetaphor, setAiMetaphor] = useState<string>("");
   const [isGeneratingAi, setIsGeneratingAi] = useState(false);
+  const [tempApiKey, setTempApiKey] = useState("");
+  const [showKeyInput, setShowKeyInput] = useState(false);
   const [isReading, setIsReading] = useState(false);
   const [ttsStatus, setTtsStatus] = useState<{ type: 'success' | 'error' | 'info', msg: string } | null>(null);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
-    // Header managed centrally in App.tsx
+    return () => {
+      if (audioRef.current) {
+        try {
+          audioRef.current.pause();
+          audioRef.current = null;
+        } catch { /* ignore */ }
+      }
+      if (typeof window !== 'undefined' && window.speechSynthesis) {
+        try {
+          window.speechSynthesis.cancel();
+        } catch { /* ignore */ }
+      }
+    };
   }, []);
 
   const handleSaveSession = async () => {
@@ -172,24 +187,98 @@ const Risultati: React.FC<ScreenProps> = () => {
       setIsReading(true);
       setTtsStatus({ type: 'info', msg: 'Caricamento audio...' });
 
-      // Voce del browser (gratuita, nessuna chiave necessaria)
-      setTtsStatus({ type: 'info', msg: 'Caricamento voce...' });
-      const utterance = new SpeechSynthesisUtterance(cleanText);
-      utterance.lang = 'it-IT';
+      // 2. Try Google Cloud TTS
+      const keyToUse = tempApiKey || apiKey || localStorage.getItem('GOOGLE_API_KEY');
+      let cloudTtsSuccess = false;
 
-      const voices = window.speechSynthesis.getVoices();
-      const itVoice = voices.find(v => v.lang.includes('it'));
-      if (itVoice) utterance.voice = itVoice;
+      if (keyToUse) {
+          try {
+              const response = await fetch(`https://texttospeech.googleapis.com/v1/text:synthesize?key=${keyToUse}`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                      input: { text: cleanText },
+                      voice: { languageCode: 'it-IT', name: 'it-IT-Neural2-A' },
+                      audioConfig: { audioEncoding: 'MP3', speakingRate: 1.0, pitch: 0 }
+                  })
+              });
+              
+              if (!response.ok) {
+                  const errorData = await response.json().catch(() => ({}));
+                  const errMsg = errorData.error?.message || response.statusText;
+                  throw new Error(`Cloud TTS Error (${response.status}): ${errMsg}`);
+              }
 
-      utterance.onstart = () => setTtsStatus({ type: 'success', msg: 'Voce: sintetizzatore del browser' });
-      utterance.onend = () => setIsReading(false);
-      utterance.onerror = () => { setIsReading(false); setTtsStatus({ type: 'error', msg: 'Errore lettura vocale.' }); };
-      window.speechSynthesis.speak(utterance);
+              const data = await response.json();
+              if (data.audioContent) {
+                  const audio = new Audio(`data:audio/mp3;base64,${data.audioContent}`);
+                  audioRef.current = audio;
+                  
+                  audio.onended = () => setIsReading(false);
+                  audio.onerror = (e) => {
+                      console.error("Audio playback error", e);
+                      setIsReading(false); 
+                  };
+                  
+                  await audio.play();
+                  setTtsStatus({ type: 'success', msg: 'Voce: Google Cloud Neural2' });
+                  cloudTtsSuccess = true;
+                  return; 
+              }
+          } catch (e: any) {
+              console.warn("Cloud TTS error, falling back to browser voice.", e);
+              
+              let msg = `Fallback locale. Errore API: ${e.message}`;
+              let type: 'error' | 'info' = 'error';
+              
+              const errString = e.message || e.toString();
+
+              // Gestione specifica per errore 403 (Forbidden) o Blocked
+              // Questo accade se l'API "Cloud Text-to-Speech" non è abilitata in console
+              if (errString.includes("403") || errString.includes("blocked")) {
+                   msg = "Voce Premium non attiva. Uso voce standard.";
+                   type = 'info'; 
+              }
+
+              setTtsStatus({ type, msg });
+          }
+      } else {
+          setTtsStatus({ type: 'error', msg: "Fallback locale. API Key mancante." });
+      }
+
+      if (!cloudTtsSuccess) {
+        // 3. Fallback to Browser SpeechSynthesis
+        const utterance = new SpeechSynthesisUtterance(cleanText);
+        utterance.lang = 'it-IT';
+        
+        const voices = window.speechSynthesis.getVoices();
+        const itVoice = voices.find(v => v.lang.includes('it') && !v.name.includes('Google')); 
+        if (itVoice) utterance.voice = itVoice;
+
+        utterance.onend = () => setIsReading(false);
+        utterance.onerror = () => setIsReading(false);
+        window.speechSynthesis.speak(utterance);
+      }
   };
 
   const handleGenerateMetaphor = async () => {
+      const keyToUse = tempApiKey || apiKey;
+      
+      if (!keyToUse) {
+          setShowKeyInput(true);
+          return;
+      }
+      
+      if (tempApiKey && tempApiKey !== apiKey) {
+          setApiKey(tempApiKey);
+          setShowKeyInput(false);
+          // Clean possible error state
+          if (aiMetaphor.includes("⛔")) setAiMetaphor("");
+      }
+
       setIsGeneratingAi(true);
       try {
+          const ai = new GoogleGenAI({ apiKey: keyToUse });
           let chatContext = "";
           if (userData.liveChatHistory && userData.liveChatHistory.length > 0) {
               chatContext = "\nSTORICO CONVERSAZIONE VOCALE UTENTE:\n";
@@ -201,14 +290,14 @@ const Risultati: React.FC<ScreenProps> = () => {
           const prompt = `
             ${ANALOGISTA_KNOWLEDGE}
             --- FINE KNOWLEDGE BASE ---
-
+            
             RUOLO: Sei un esperto Analogista Virtuale.
-
+            
             IMPORTANTE:
             - NON CITARE MAI NOMI DI AUTORI.
             - NON INSERIRE SIMBOLI VISIVI.
             - Scrivi in modo discorsivo e fluido.
-
+            
             DATI UTENTE:
             - Nome: ${userData.nome}
             - Induttore: ${userData.induttoreResult}
@@ -216,29 +305,31 @@ const Risultati: React.FC<ScreenProps> = () => {
             - Punto Distonico: ${userData.puntoDistonicoFinale}
             - Evento Causa: ${userData.timeLine.etaEventoCausa} anni (Testimone: ${userData.testimoneChiave}).
             - Reazione al Torto: ${userData.giustificatoTorto} (SI=Dissociazione, NO=Scissione).
-
+            
             ${chatContext}
-
-            COMPITO: Scrivi una "Lettura Analogica Incrociata" di circa 350 parole.
-          `;
-
-          const response = await fetch('/api/gemini', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ prompt }),
-          });
-
-          if (!response.ok) {
-              const errData = await response.json().catch(() => ({}));
-              throw new Error(errData.error || `Errore server (${response.status})`);
-          }
-
-          const data = await response.json();
-          setAiMetaphor(data.text || "Errore generazione.");
+            
+            COMPITO: Scrivi una "Analisi Analogica Incrociata" di circa 350 parole.
+          `; 
+          
+          const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
+          setAiMetaphor(response.text || "Errore generazione.");
 
       } catch (error: any) {
           console.error(error);
-          setAiMetaphor(`⛔ ${error.message || 'Errore nella generazione AI. Riprova.'}`);
+          let errorMsg = `⛔ ERRORE: Verificare la chiave API o la connessione.`;
+          
+          // Parsing specifico per errore Referer 403
+          const errString = error.toString();
+          if (errString.includes("Requests from referer") && errString.includes("blocked")) {
+              const match = errString.match(/Requests from referer (.*?) are blocked/);
+              const blockedUrl = match ? match[1] : window.location.origin;
+              errorMsg = `⛔ BLOCCO SICUREZZA: La tua API Key non autorizza questo sito (${blockedUrl}).\n\nAggiungi "${blockedUrl}*" alle "Restrizioni siti web" su Google Cloud Console o rimuovi le restrizioni.`;
+          } else if (errString.includes("403")) {
+              errorMsg = `⛔ ERRORE 403: Chiave API non valida o permessi insufficienti.`;
+          }
+
+          setAiMetaphor(errorMsg);
+          setShowKeyInput(true);
       } finally {
           setIsGeneratingAi(false);
       }
@@ -357,6 +448,8 @@ const Risultati: React.FC<ScreenProps> = () => {
          );
   };
 
+  // Logica Visibilità Box Warning
+  const shouldShowKeyInput = showKeyInput || !apiKey || aiMetaphor.includes("⛔ ERRORE") || aiMetaphor.includes("⛔ BLOCCO");
 
   return (
     <div className="bg-gray-50 rounded-lg shadow-lg p-4 sm:p-6 print:bg-white">
@@ -372,31 +465,88 @@ const Risultati: React.FC<ScreenProps> = () => {
        <div className="bg-purple-50 p-5 mb-6 rounded-lg border border-purple-200 no-print">
             <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
                 <div className="flex-1 w-full">
-                    <h3 className="font-bold text-purple-900 text-lg">🧠 Lettura Analogica Generativa</h3>
-                    <p className="text-purple-700 text-sm mb-2">L'Intelligenza Artificiale approfondisce i tuoi dati e genera una metafora risolutiva personalizzata.</p>
+                    <h3 className="font-bold text-purple-900 text-lg">🧠 Analisi Generativa & Metafora Terapeutica</h3>
+                    <p className="text-purple-700 text-sm mb-2">L'Intelligenza Artificiale può approfondire questi dati e generare una metafora risolutiva personalizzata.</p>
+                    
+                    {/* --- BOX AVVISO PREMIUM API KEY --- */}
+                    {shouldShowKeyInput && (
+                        <div className="mt-4 bg-yellow-50 border-2 border-yellow-400 rounded-xl p-5 shadow-md relative overflow-hidden">
+                             {/* Effetto luce background */}
+                             <div className="absolute -right-6 -top-6 w-24 h-24 bg-yellow-200 rounded-full blur-2xl opacity-50"></div>
+                             
+                            <div className="flex items-start mb-3 relative z-10">
+                                <span className="text-3xl mr-3 animate-pulse">⚠️</span>
+                                <div>
+                                    <h4 className="font-black text-yellow-800 text-base uppercase tracking-wide">Funzionalità Premium Richiesta</h4>
+                                    <p className="text-sm text-yellow-800 mt-1 font-medium leading-relaxed">
+                                        Per generare l'analisi con l'AI e ascoltare la voce neurale, <strong>è necessario inserire la tua Google Cloud API Key personale</strong>.
+                                    </p>
+                                    <p className="text-xs text-yellow-700 mt-1 opacity-80">
+                                        I test fisici sono gratuiti, ma l'elaborazione generativa ha un costo di servizio esterno.
+                                    </p>
+                                </div>
+                            </div>
+                            
+                            <div className="relative z-10">
+                                <label className="text-xs text-yellow-900 font-bold block mb-1 ml-1">INCOLLA QUI LA TUA API KEY (AIzaSy...)</label>
+                                <div className="flex gap-2">
+                                    <input 
+                                        type="password" 
+                                        value={tempApiKey} 
+                                        onChange={(e) => setTempApiKey(e.target.value)} 
+                                        placeholder="AIzaSy..." 
+                                        className="flex-1 p-3 border-2 border-yellow-300 rounded-lg text-sm focus:ring-2 focus:ring-yellow-500 outline-none shadow-inner bg-white" 
+                                    />
+                                    {tempApiKey && (
+                                        <button 
+                                            onClick={() => {
+                                                setApiKey(tempApiKey);
+                                                setShowKeyInput(false);
+                                                if (aiMetaphor.includes("⛔")) setAiMetaphor("");
+                                            }}
+                                            className="bg-yellow-600 text-white px-4 rounded-lg font-bold text-sm hover:bg-yellow-700 transition shadow-sm"
+                                        >
+                                            Salva
+                                        </button>
+                                    )}
+                                </div>
+                                <p className="text-[10px] text-gray-500 mt-1 italic ml-1">La chiave viene salvata localmente nel tuo browser.</p>
+                            </div>
+                        </div>
+                    )}
+                    
+                    {!shouldShowKeyInput && apiKey && !aiMetaphor.includes("⛔") && (
+                         <button 
+                            onClick={() => setShowKeyInput(true)}
+                            className="text-xs text-purple-500 underline mt-1 hover:text-purple-700"
+                         >
+                            Modifica API Key
+                         </button>
+                    )}
                 </div>
-                <button
-                    onClick={handleGenerateMetaphor}
-                    disabled={isGeneratingAi}
+                <button 
+                    onClick={handleGenerateMetaphor} 
+                    disabled={isGeneratingAi || (!apiKey && !tempApiKey)} 
                     className="bg-purple-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-purple-700 transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed mt-2 sm:mt-0 flex-shrink-0 shadow-lg"
                 >
-                    {isGeneratingAi ? 'Generazione in corso...' : '✨ Genera Lettura Analogica'}
+                    {isGeneratingAi ? 'Generazione in corso...' : '✨ Genera Analisi AI'}
                 </button>
             </div>
             {aiMetaphor && !aiMetaphor.includes("⛔") && (
                 <div className="mt-4 p-4 bg-white rounded-lg border border-purple-100 shadow-inner">
                     <div className="flex justify-between items-start mb-2">
-                        <h4 className="font-bold text-purple-800">La Lettura Analogica:</h4>
+                        <h4 className="font-bold text-purple-800">L'Analisi dell'Analogista Virtuale:</h4>
                         <div className="flex flex-col items-end">
-                            <button
-                                onClick={speakAnalysis}
+                            <button 
+                                onClick={speakAnalysis} 
+                                data-keep-voice="true"
                                 className={`text-xs px-3 py-1 rounded-full font-bold flex items-center gap-1 transition-all ${isReading ? 'bg-red-100 text-red-600 animate-pulse border border-red-200' : 'bg-purple-100 text-purple-600 border border-purple-200 hover:bg-purple-200'}`}
                             >
-                                {isReading ? '⏹️ Stop Lettura' : '🔊 Ascolta'}
+                                {isReading ? '⏹️ Stop Lettura' : '🔊 Ascolta (Voce AI)'}
                             </button>
                             {ttsStatus && (
                                 <span className={`text-[10px] mt-1 ${
-                                    ttsStatus.type === 'success' ? 'text-green-600' :
+                                    ttsStatus.type === 'success' ? 'text-green-600' : 
                                     ttsStatus.type === 'error' ? 'text-red-600 font-bold' : 'text-blue-600'
                                 }`}>
                                     {ttsStatus.msg}
@@ -405,11 +555,6 @@ const Risultati: React.FC<ScreenProps> = () => {
                         </div>
                     </div>
                     <p className="text-gray-800 whitespace-pre-wrap text-sm leading-relaxed">{aiMetaphor}</p>
-                </div>
-            )}
-            {aiMetaphor && aiMetaphor.includes("⛔") && (
-                <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-                    <p className="text-red-700 text-sm">{aiMetaphor}</p>
                 </div>
             )}
        </div>
@@ -437,7 +582,7 @@ const Risultati: React.FC<ScreenProps> = () => {
 
         <div className="md:col-span-2">
             <ResultCard title="⏳ Time Line">
-                <p><strong>Lettura Analogica:</strong> {userData.timeLine.diagnosi}</p>
+                <p><strong>Diagnosi:</strong> {userData.timeLine.diagnosi}</p>
                 {userData.timeLine.PU && (
                      <TimeLineGraph 
                         age={parseInt(userData.eta)} 

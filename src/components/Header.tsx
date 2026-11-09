@@ -100,15 +100,6 @@ const Header: React.FC = () => {
               </p>
           )}
       </div>
-      
-      {/* Footer specifico per la Dashboard: Dedica a Benemeglio */}
-      {isDashboard && (
-        <div className="mt-3 pt-2 border-t border-blue-500 text-center">
-          <span className="text-xs sm:text-sm font-serif italic text-[#f3f3f3] opacity-90">
-              In memoria di Stefano Benemeglio
-          </span>
-        </div>
-      )}
     </header>
   );
 };

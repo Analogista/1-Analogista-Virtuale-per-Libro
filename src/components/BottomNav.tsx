@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { AdvancedVoiceService } from '../services/AdvancedVoiceService';
 
 const NavItem: React.FC<{
   Icon: React.ReactElement;
@@ -54,17 +55,22 @@ const BottomNav: React.FC = () => {
   const location = useLocation();
   const currentPath = location.pathname;
 
+  const handleNav = (path: string) => {
+    AdvancedVoiceService.stopAll();
+    navigate(path);
+  };
+
   return (
     <nav className="sticky top-0 z-50 flex flex-row items-center justify-between w-full bg-white/95 backdrop-blur-md border-b border-gray-200 shadow-sm overflow-x-auto no-scrollbar">
-      <NavItem Icon={<HomeIcon isActive={currentPath === '/'} />} label="Home" isActive={currentPath === '/'} onClick={() => navigate('/')} />
+      <NavItem Icon={<HomeIcon isActive={currentPath === '/'} />} label="Home" isActive={currentPath === '/'} onClick={() => handleNav('/')} />
       <div className="w-px h-8 bg-gray-200 flex-shrink-0"></div>
-      <NavItem Icon={<ResultsIcon isActive={currentPath === '/risultati'} />} label="Risultati" isActive={currentPath === '/risultati'} onClick={() => navigate('/risultati')} />
+      <NavItem Icon={<ResultsIcon isActive={currentPath === '/risultati'} />} label="Risultati" isActive={currentPath === '/risultati'} onClick={() => handleNav('/risultati')} />
       <div className="w-px h-8 bg-gray-200 flex-shrink-0"></div>
-      <NavItem Icon={<VideoIcon isActive={currentPath === '/chat'} />} label="Video Corso" isActive={currentPath === '/chat'} onClick={() => navigate('/chat')} />
+      <NavItem Icon={<VideoIcon isActive={currentPath === '/chat'} />} label="Video Corso" isActive={currentPath === '/chat'} onClick={() => handleNav('/chat')} />
       <div className="w-px h-8 bg-gray-200 flex-shrink-0"></div>
-      <NavItem Icon={<HistoryIcon isActive={currentPath === '/history'} />} label="Storico" isActive={currentPath === '/history'} onClick={() => navigate('/history')} />
+      <NavItem Icon={<HistoryIcon isActive={currentPath === '/history'} />} label="Storico" isActive={currentPath === '/history'} onClick={() => handleNav('/history')} />
       <div className="w-px h-8 bg-gray-200 flex-shrink-0"></div>
-      <NavItem Icon={<ContactIcon isActive={currentPath === '/contatti'} />} label="Contatti" isActive={currentPath === '/contatti'} onClick={() => navigate('/contatti')} />
+      <NavItem Icon={<ContactIcon isActive={currentPath === '/contatti'} />} label="Contatti" isActive={currentPath === '/contatti'} onClick={() => handleNav('/contatti')} />
     </nav>
   );
 };

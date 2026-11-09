@@ -1,5 +1,6 @@
 
 import React from 'react';
+import { AdvancedVoiceService } from '../services/AdvancedVoiceService';
 
 interface TestControlsProps {
     onRepeat: () => void;
@@ -17,6 +18,7 @@ const TestControls: React.FC<TestControlsProps> = ({ onRepeat, onExit, showContr
                 {/* PULSANTE RIPETI */}
                 <button 
                     onClick={() => {
+                        AdvancedVoiceService.stopAll();
                         if(window.confirm("Vuoi davvero ricominciare il test?")) {
                             onRepeat();
                         }
@@ -34,7 +36,10 @@ const TestControls: React.FC<TestControlsProps> = ({ onRepeat, onExit, showContr
                     <>
                         <div className="w-px h-12 bg-white/10 mx-1"></div>
                         <button 
-                            onClick={onExit}
+                            onClick={() => {
+                                AdvancedVoiceService.stopAll();
+                                onExit();
+                            }}
                             className="flex flex-col items-center justify-center w-24 py-2.5 bg-white/5 hover:bg-white/10 text-white rounded-2xl transition-all border border-white/10"
                             title="Esci"
                         >

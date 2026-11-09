@@ -22,7 +22,7 @@ const ChiSono: React.FC<ScreenProps> = ({ setPage }) => {
       <VideoAccordion videoId="_f5Gzqt1_G8" title="🎥 Video: Chi sono e cosa faccio" />
 
       <div className="space-y-4 text-gray-700">
-        <p>Sono Massimo Pisani, un Analogista dal 2007, professionista nel ramo olistico, autore di manuali di auto miglioramento (che puoi trovare nella pagina "contatti") e ricercatore appassionato delle Discipline Analogiche ideate da Stefano Benemeglio, il mio Maestro, alla cui memoria dedico questa App che simula la tecnica che utilizza l'Analogista.</p>
+        <p>Sono Massimo Pisani, un Analogista dal 2007, professionista nel ramo olistico, autore di manuali di auto miglioramento (che puoi trovare nella pagina "contatti") e ricercatore appassionato delle Discipline Analogiche ideate da Stefano Benemeglio, il mio Maestro. Questa App simula la tecnica che utilizza l'Analogista.</p>
         
         {/* Immagine inserita come richiesto */}
         <div className="flex justify-center my-6">

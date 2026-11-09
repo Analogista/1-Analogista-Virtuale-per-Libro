@@ -286,6 +286,7 @@ const CameraView = React.forwardRef<CameraViewRef, CameraViewProps>(({ videoRef,
           {onVoiceGuide && (
             <button 
               onClick={onVoiceGuide}
+              data-keep-voice="true"
               disabled={!isReady || isCalibrating}
               className="px-6 py-2.5 bg-indigo-600/90 hover:bg-indigo-500 border border-indigo-400/40 disabled:opacity-30 text-white font-mono font-bold text-[10px] tracking-widest uppercase rounded-xl transition-all active:scale-95 shadow-lg flex items-center gap-2"
             >

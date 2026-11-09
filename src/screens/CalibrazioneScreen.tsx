@@ -70,6 +70,10 @@ const CalibrazioneScreen: React.FC<ScreenProps> = ({ setPage }) => {
   };
 
   const playVoiceGuide = async () => {
+    if (voiceService.isSpeaking()) {
+      voiceService.cancel();
+      return;
+    }
     try {
       const nome = userData?.nome || "Amico";
       await voiceService.speak(`Poggia lo smartphone o il pc di fronte a te e mettiti in piedi. È sufficiente che la telecamera inquadri il tuo busto, dalla vita alla testa. Questo test ci servirà per calibrare l'oscillazione del tuo corpo, in avanti o indietro. In alto trovi la barra per regolare la sensibilità. Quando premerai il pulsante arancione ci sarà un conto alla rovescia da 5 a 0 e congelerà la posizione iniziale. Nei test successivi potrai sempre ricalibrare. Buona sessione ${nome}.`);
@@ -80,6 +84,7 @@ const CalibrazioneScreen: React.FC<ScreenProps> = ({ setPage }) => {
   };
 
   const startCalibration = async () => {
+    voiceService.cancel();
     setStatus('TESTING');
     setMessage("Preparazione in corso...");
     

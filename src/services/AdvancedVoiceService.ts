@@ -6,6 +6,27 @@ export type AutomatedResponse = 'SI' | 'NO' | 'NON_RILEVATO';
 const INTERNAL_FALLBACK_KEY = "";
 
 export class AdvancedVoiceService {
+    private static activeInstances = new Set<AdvancedVoiceService>();
+
+    public static isAnySpeaking(): boolean {
+        if (typeof window !== 'undefined' && window.speechSynthesis && (window.speechSynthesis.speaking || window.speechSynthesis.pending)) {
+            return true;
+        }
+        for (const inst of AdvancedVoiceService.activeInstances) {
+            if (inst.isSpeaking()) return true;
+        }
+        return false;
+    }
+
+    public static stopAll(): void {
+        for (const inst of AdvancedVoiceService.activeInstances) {
+            try { inst.cancel(); } catch { /* ignore */ }
+        }
+        if (typeof window !== 'undefined' && window.speechSynthesis) {
+            try { window.speechSynthesis.cancel(); } catch { /* ignore */ }
+        }
+    }
+
     private synthesis: SpeechSynthesis;
     private motionDetector: MotionDetectionService;
     private isWaitingForResponse = false;
@@ -20,6 +41,7 @@ export class AdvancedVoiceService {
     private epoch = 0;
 
     constructor() {
+        AdvancedVoiceService.activeInstances.add(this);
         this.synthesis = window.speechSynthesis;
         this.motionDetector = new MotionDetectionService();
         try { this.synthesis.getVoices(); } catch { /* ignore */ }
@@ -77,15 +99,45 @@ export class AdvancedVoiceService {
         this.activeSettlers = [];
         this.isPaused = false;
         this.isWaitingForResponse = false;
-        if (this.currentAudio) { this.currentAudio.pause(); this.currentAudio = null; }
-        this.synthesis.cancel();
+        if (this.currentAudio) {
+            try {
+                this.currentAudio.pause();
+                this.currentAudio.currentTime = 0;
+                this.currentAudio.src = "";
+            } catch { /* ignore */ }
+            this.currentAudio = null;
+        }
+        if (this.synthesis) {
+            try {
+                this.synthesis.cancel();
+            } catch { /* ignore */ }
+        }
         this.currentUtterance = null;
         this.motionDetector.stopDetection();
         this.stopListening();
-        if (this.responseTimeout) clearTimeout(this.responseTimeout);
-        if (this.movementHandler) window.removeEventListener('movementDetected', this.movementHandler);
+        if (this.responseTimeout) {
+            clearTimeout(this.responseTimeout);
+            this.responseTimeout = null;
+        }
+        if (this.movementHandler) {
+            window.removeEventListener('movementDetected', this.movementHandler);
+            this.movementHandler = null;
+        }
         this.dispatchStatus('idle', '');
-        settlers.forEach(s => s());
+        settlers.forEach(s => {
+            try { s(); } catch { /* ignore */ }
+        });
+    }
+
+    public isSpeaking(): boolean {
+        const hasAudio = !!(this.currentAudio && !this.currentAudio.paused);
+        const hasSynth = !!(this.synthesis && (this.synthesis.speaking || this.synthesis.pending));
+        return hasAudio || hasSynth || this.isWaitingForResponse;
+    }
+
+    public destroy() {
+        this.cancel();
+        AdvancedVoiceService.activeInstances.delete(this);
     }
 
     public listenForCommand(command: string, callback: () => void) {
@@ -297,4 +349,31 @@ export class AdvancedVoiceService {
             execute();
         });
     }
+}
+
+// Intercettore globale dei click:
+// Se qualsiasi voce guida o sintesi vocale è attiva e l'utente clicca qualsiasi pulsante o elemento interattivo
+// sullo schermo (es. Esci, Ripeti, Torna alla home, Calibra, Avvia test, ecc.), la voce si spegne istantaneamente.
+if (typeof window !== 'undefined' && !(window as any).__voiceClickInterceptorAttached) {
+    (window as any).__voiceClickInterceptorAttached = true;
+    window.addEventListener(
+        'click',
+        (event: MouseEvent) => {
+            const target = event.target as HTMLElement | null;
+            if (!target) return;
+            const clickable = target.closest('button, a, [role="button"], input[type="button"], input[type="submit"]');
+            if (!clickable) return;
+
+            // Se l'elemento è esplicitamente autorizzato a mantenere/gestire la voce (es. toggle guida vocale)
+            if (clickable.getAttribute('data-keep-voice') === 'true') {
+                return;
+            }
+
+            // Spegne immediatamente qualsiasi voce guida o audio in riproduzione
+            if (AdvancedVoiceService.isAnySpeaking()) {
+                AdvancedVoiceService.stopAll();
+            }
+        },
+        true
+    );
 }
