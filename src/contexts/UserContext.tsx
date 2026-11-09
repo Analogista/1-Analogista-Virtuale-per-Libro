@@ -1,4 +1,4 @@
-
+/* © 2026 Max Pisani - PACommunication. Tutti i diritti riservati. */
 import React, { createContext, useState, useContext, ReactNode, useEffect, useMemo } from 'react';
 import { UserData, UserContextType } from '../types';
 
@@ -36,9 +36,8 @@ const initialUserData: UserData = {
   liveChatHistory: [],
 };
 
-// Estendiamo l'interfaccia context per includere resetUserData
 export interface ExtendedUserContextType extends UserContextType {
-    resetUserData: () => void;
+  resetUserData: () => void;
 }
 
 export const UserContext = createContext<ExtendedUserContextType | undefined>(undefined);
@@ -68,19 +67,17 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, [userData]);
 
   const resetUserData = () => {
-      setUserData(initialUserData);
-      localStorage.removeItem('userData');
-      localStorage.removeItem('wizardStep');
-      setAudioEnabled(false);
+    setUserData(initialUserData);
+    localStorage.removeItem('userData');
+    setAudioEnabled(false);
   };
 
-  // FIX CRUCIALE: useMemo impedisce la ricreazione dell'oggetto context ad ogni render (es. digitazione)
   const contextValue = useMemo(() => ({ 
-      userData, 
-      setUserData, 
-      resetUserData,
-      isAudioEnabled,
-      setAudioEnabled
+    userData, 
+    setUserData, 
+    resetUserData,
+    isAudioEnabled,
+    setAudioEnabled
   }), [userData, isAudioEnabled]);
 
   return (

@@ -1,4 +1,6 @@
+/* © 2026 Max Pisani - PACommunication. Tutti i diritti riservati. */
 import React, { useState, useRef, useMemo, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useUser } from '../contexts/UserContext';
 import { useApiKey } from '../contexts/ApiKeyContext';
 import CameraView from '../components/CameraView';
@@ -7,14 +9,13 @@ import TestControls from '../components/TestControls';
 import { SYMBOLS_CONFIG, computeTapDiagnosis, enrichTapDiagnosis, SymbolType, SymbolReaction } from '../utils/tapEngine';
 
 interface ScreenProps {
-  setPage: (page: number) => void;
-  onNext?: () => void;
-  isWizard?: boolean;
+  setPage: (page: number | string) => void;
 }
 
 type TestStatus = 'WAITING_CALIBRATION' | 'CALIBRATING' | 'WAITING_INTRO' | 'TESTING_SYMBOL' | 'DONE' | 'SUCCESS';
 
-export const TestTAP: React.FC<ScreenProps> = ({ setPage, onNext, isWizard }) => {
+export const TestTAP: React.FC<ScreenProps> = ({ setPage }) => {
+  const navigate = useNavigate();
   const { userData, setUserData } = useUser();
   const { apiKey } = useApiKey();
   const [status, setStatus] = useState<TestStatus>('WAITING_CALIBRATION');
@@ -68,7 +69,7 @@ export const TestTAP: React.FC<ScreenProps> = ({ setPage, onNext, isWizard }) =>
   const handleRepeat = () => {
     try { voiceService.cancel(); } catch { /* ignore */ }
     setStatus('WAITING_CALIBRATION');
-    setMessage('Premi "Inizia Calibrazione" per ricominciare il test T.A.P.');
+    setMessage('Premi "Inizia Calibrazione e Test T.A.P." per ricominciare il test.');
     setResults({ cerchio: '', asta: '', triangolo: '' });
     setIsZooming(false);
   };
@@ -82,7 +83,7 @@ export const TestTAP: React.FC<ScreenProps> = ({ setPage, onNext, isWizard }) =>
     setStatus('WAITING_INTRO');
     setMessage('Preparazione al test T.A.P. in corso...');
     try {
-      await voiceService.speak("osserva il simbolo che avanza. Saranno 3 simboli. io rileverò la tua oscillazione naturale, se in avanti o indietro per ciascun simbolo");
+      await voiceService.speak("Osserva il simbolo che avanza. Saranno 3 simboli. Io rileverò la tua oscillazione naturale, se in avanti o indietro per ciascun simbolo.");
       runSymbolTests();
     } catch (error) {
       console.error("Voice intro error:", error);
@@ -147,11 +148,11 @@ export const TestTAP: React.FC<ScreenProps> = ({ setPage, onNext, isWizard }) =>
     }
 
     // Finished all symbols - compute diagnosis with validation
-    const diagnosis = enrichTapDiagnosis(computeTapDiagnosis(currentResults, genere));
+    const computedDiagnosis = enrichTapDiagnosis(computeTapDiagnosis(currentResults, genere));
 
-    if (!diagnosis.isValid) {
+    if (!computedDiagnosis.isValid) {
       setStatus('WAITING_CALIBRATION');
-      setMessage(`⚠️ ${diagnosis.tipologia}: ${diagnosis.distonia}. Si prega di ripetere il test.`);
+      setMessage(`⚠️ ${computedDiagnosis.tipologia}: ${computedDiagnosis.distonia}. Si prega di ripetere il test.`);
       try {
         await voiceService.speak("Il test non ha prodotto risposte sufficientemente stabili o univoche. Ti invito a ripetere la calibrazione e il test.");
       } catch { /* ignore */ }
@@ -163,39 +164,42 @@ export const TestTAP: React.FC<ScreenProps> = ({ setPage, onNext, isWizard }) =>
       genere,
       testTAP: {
         results: currentResults,
-        diagnosis
+        diagnosis: computedDiagnosis
       },
       completedTests: { ...prev.completedTests, tap: true }
     }));
 
     setStatus('SUCCESS');
-    setMessage(`Test T.A.P. Completato! Tipologia rilevata: ${diagnosis.tipologia}`);
+    setMessage(`Test T.A.P. Completato! Tipologia rilevata: ${computedDiagnosis.tipologia}`);
     try {
-      const profile = diagnosis.profilo;
+      const profile = computedDiagnosis.profilo;
       const profileSpeech = profile
-        ? ` Famiglia evolutiva: ${profile.famiglia}. Referente simbolico: ${profile.referente}. Polarità: ${profile.polarita}. Origine: ${profile.origine}. Stile comportamentale: ${profile.stile}. Dinamica diagnostica: ${diagnosis.dinamica}. Dinamica relazionale: ${profile.relazioni}. Meccanismo: ${profile.meccanismo}. Orientamento: ${profile.orientamento}.`
+        ? ` Famiglia evolutiva: ${profile.famiglia}. Referente simbolico: ${profile.referente}. Polarità: ${profile.polarita}. Origine: ${profile.origine}. Stile comportamentale: ${profile.stile}. Dinamica diagnostica: ${computedDiagnosis.dinamica}. Dinamica relazionale: ${profile.relazioni}. Meccanismo: ${profile.meccanismo}. Orientamento: ${profile.orientamento}.`
         : '';
-      await voiceService.speak(`Test T.A.P. completato con successo. La tua tipologia analogica è ${diagnosis.tipologia}.${profileSpeech} Premi il pulsante per proseguire.`);
+      await voiceService.speak(`Test T.A.P. completato con successo. La tua tipologia analogica è ${computedDiagnosis.tipologia}.${profileSpeech} Puoi consultare il tuo profilo.`);
     } catch { /* ignore */ }
   };
 
   const diagnosis = enrichTapDiagnosis(computeTapDiagnosis(results, genere));
-
-  const handleProsegui = () => {
-    try { voiceService.cancel(); } catch { /* ignore */ }
-    if (onNext) onNext(); else setPage(0);
-  };
-
   const showControls = status === 'WAITING_INTRO' || status === 'TESTING_SYMBOL';
 
   return (
     <div className="bg-[#0a0a0c] text-white min-h-screen p-4 sm:p-6 pb-24 relative transition-colors duration-500">
+      {/* Header */}
       <div className="flex justify-between items-start mb-6">
         <div>
-          <h2 className="text-2xl font-serif font-black text-cyan-400">{isWizard ? 'TEST T.A.P. (Cerchio, Asta, Triangolo)' : 'TEST T.A.P. (TIPOLOGIA ANALOGICA)'}</h2>
-          <h3 className="text-sm tracking-widest uppercase font-bold text-gray-400">Analisi degli Archetipi di Stefano Benemeglio</h3>
+          <span className="inline-block px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-cyan-950 border border-cyan-800 text-cyan-400 mb-1">
+            Test Standalone
+          </span>
+          <h2 className="text-2xl font-serif font-black text-cyan-400">TEST T.A.P. (TIPOLOGIA ANALOGICA)</h2>
+          <h3 className="text-sm tracking-widest uppercase font-bold text-gray-400">Analisi degli Archetipi: Cerchio, Asta, Triangolo</h3>
         </div>
-        {!isWizard && (<button onClick={() => setPage(0)} className="text-xs uppercase tracking-widest font-bold text-cyan-500 hover:text-cyan-400">&larr; ESCI</button>)}
+        <button
+          onClick={handleExit}
+          className="text-xs uppercase tracking-widest font-bold text-cyan-500 hover:text-cyan-400 border border-cyan-900/60 px-3 py-1.5 rounded-lg transition"
+        >
+          &larr; ESCI / HOME
+        </button>
       </div>
 
       {/* Seleziona Genere e Toggle Overlay */}
@@ -233,7 +237,7 @@ export const TestTAP: React.FC<ScreenProps> = ({ setPage, onNext, isWizard }) =>
          <div className="relative rounded-2xl overflow-hidden shadow-2xl border-4 border-gray-800 bg-black">
             <CameraView ref={cameraRef} videoRef={videoRef} showSilhouette={false} onReady={handleCameraReady} onServiceId={setCameraServiceId} onCalibrated={handleCalibrated} />
 
-            {/* Header / Badge del simbolo corrente all'interno della webcam */}
+            {/* Header / Badge del simbolo corrente */}
             <div className="absolute top-4 left-4 right-4 flex justify-between items-center pointer-events-none z-30">
               <div className="bg-black/70 backdrop-blur-md px-4 py-2 rounded-xl border border-cyan-500/30 text-xs uppercase tracking-widest text-cyan-400 font-mono shadow-lg">
                 {SYMBOLS_CONFIG[currentSymbolKey].label} - {SYMBOLS_CONFIG[currentSymbolKey].archetype}
@@ -278,7 +282,7 @@ export const TestTAP: React.FC<ScreenProps> = ({ setPage, onNext, isWizard }) =>
         )}
       </div>
 
-       <div className="text-center p-6 rounded-2xl min-h-[120px] flex flex-col justify-center border bg-gray-900/40 border-gray-800 backdrop-blur">
+      <div className="text-center p-6 rounded-2xl min-h-[120px] flex flex-col justify-center border bg-gray-900/40 border-gray-800 backdrop-blur">
         <p className={`font-medium text-lg leading-relaxed ${status === 'SUCCESS' ? 'text-green-400' : 'text-cyan-200'}`}>
           {message}
         </p>
@@ -311,8 +315,15 @@ export const TestTAP: React.FC<ScreenProps> = ({ setPage, onNext, isWizard }) =>
 
       {status === 'SUCCESS' && (
         <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
-            <button onClick={handleRepeat} className="flex-1 bg-gray-800 text-gray-300 font-black py-4 px-6 rounded-2xl hover:bg-gray-700 transition duration-300 uppercase tracking-widest border border-white/5">RIPROVA TEST</button>
-            <button onClick={handleProsegui} className="flex-1 bg-cyan-600 text-white font-black py-4 px-6 rounded-2xl hover:bg-cyan-500 transition duration-300 shadow-xl uppercase tracking-widest">PROSEGUI →</button>
+            <button onClick={handleRepeat} className="flex-1 bg-gray-800 text-gray-300 font-black py-4 px-6 rounded-2xl hover:bg-gray-700 transition duration-300 uppercase tracking-widest border border-white/5">
+              RIPROVA TEST
+            </button>
+            <button onClick={() => setPage(0)} className="flex-1 bg-cyan-600 text-white font-black py-4 px-6 rounded-2xl hover:bg-cyan-500 transition duration-300 shadow-xl uppercase tracking-widest">
+              TORNA AI TEST
+            </button>
+            <button onClick={() => navigate('/risultati')} className="flex-1 bg-indigo-600 text-white font-black py-4 px-6 rounded-2xl hover:bg-indigo-500 transition duration-300 shadow-xl uppercase tracking-widest">
+              VEDI RISULTATI
+            </button>
         </div>
       )}
 

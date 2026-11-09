@@ -1,14 +1,12 @@
-
+/* © 2026 Max Pisani - PACommunication. Tutti i diritti riservati. */
 import React, { useRef } from 'react';
 import { useUser } from '../contexts/UserContext';
 
 interface ScreenProps {
-  setPage: (page: number) => void;
-  onNext?: () => void;
-  isWizard?: boolean;
+  setPage: (page: number | string) => void;
 }
 
-const ChiSei: React.FC<ScreenProps> = ({ setPage, onNext, isWizard }) => {
+const ChiSei: React.FC<ScreenProps> = ({ setPage }) => {
   const { userData, setUserData } = useUser();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -24,13 +22,9 @@ const ChiSei: React.FC<ScreenProps> = ({ setPage, onNext, isWizard }) => {
         ...prev,
         completedTests: { ...prev.completedTests, chiSei: true }
       }));
-      if (onNext) {
-        onNext();
-      } else {
-        setPage(0); // Callback to return to dashboard
-      }
+      setPage(0); // Torna alla home con i dati salvati
     } else {
-      alert("Per favore, compila tutti i campi.");
+      alert("Per favore, compila tutti i campi obbligatori (Nome, Età, Genere).");
     }
   };
   
@@ -43,13 +37,12 @@ const ChiSei: React.FC<ScreenProps> = ({ setPage, onNext, isWizard }) => {
       try {
         const json = e.target?.result as string;
         const parsedData = JSON.parse(json);
-        // Validazione minima
         if (parsedData && typeof parsedData === 'object' && 'nome' in parsedData) {
-            setUserData(parsedData);
-            alert("Dati ripristinati con successo!");
-            setPage(0);
+          setUserData(parsedData);
+          alert("Dati ripristinati con successo!");
+          setPage(0);
         } else {
-            alert("Il file non sembra essere un backup valido.");
+          alert("Il file non sembra essere un backup valido.");
         }
       } catch (error) {
         alert("Errore nella lettura del file.");
@@ -70,15 +63,13 @@ const ChiSei: React.FC<ScreenProps> = ({ setPage, onNext, isWizard }) => {
             Identità Analogica
           </h3>
         </div>
-        {!isWizard && (
-          <button onClick={() => setPage(0)} className="text-xs uppercase tracking-widest font-bold text-cyan-500 hover:text-cyan-400">
-            &larr; HOME
-          </button>
-        )}
+        <button onClick={() => setPage(0)} className="text-xs uppercase tracking-widest font-bold text-cyan-500 hover:text-cyan-400 border border-cyan-900/60 px-3 py-1.5 rounded-lg transition">
+          &larr; HOME
+        </button>
       </div>
       
       <div className={`border-l-4 p-5 mb-8 text-sm ${isProMode ? 'bg-cyan-950/20 border-cyan-500 text-cyan-100' : 'bg-blue-50 border-blue-500 text-blue-800'}`}>
-          <p className="leading-relaxed">I tuoi dati sono necessari per la voce guida. Saranno processati <strong>solo localmente</strong> e cancellati alla chiusura.</p>
+        <p className="leading-relaxed">I tuoi dati sono necessari per la voce guida e per personalizzare i test analogici. Saranno salvati in locale.</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6 max-w-2xl">
@@ -106,6 +97,7 @@ const ChiSei: React.FC<ScreenProps> = ({ setPage, onNext, isWizard }) => {
               name="eta"
               value={userData.eta}
               onChange={handleChange}
+              placeholder="ES. 35"
               style={{ color: '#070606', backgroundColor: '#ffffff' }}
               className="block w-full px-4 py-4 rounded-xl transition-all duration-300 border-2 outline-none shadow-[inset_0_2px_4px_rgba(0,0,0,0.3)]"
               required
@@ -130,14 +122,14 @@ const ChiSei: React.FC<ScreenProps> = ({ setPage, onNext, isWizard }) => {
         </div>
 
         <div className="group">
-          <label htmlFor="problema" style={{ color: '#ffffff' }} className="block text-[10px] font-black tracking-[0.2em] uppercase mb-2">PROBLEMA CHE VUOI RISOLVERE</label>
+          <label htmlFor="problema" style={{ color: '#ffffff' }} className="block text-[10px] font-black tracking-[0.2em] uppercase mb-2">PROBLEMA O BLOCCO CHE VUOI RISOLVERE</label>
           <textarea
             id="problema"
             name="problema"
             value={userData.problema}
             onChange={handleChange}
             rows={4}
-            placeholder="Qual è il tuo disagio attuale?"
+            placeholder="Qual è il tuo disagio emotivo attuale o obiettivo?"
             style={{ color: '#000000', backgroundColor: '#ffffff' }}
             className="block w-full px-4 py-4 rounded-xl transition-all duration-300 border-2 outline-none shadow-[inset_0_2px_4px_rgba(0,0,0,0.3)]"
           />
@@ -151,20 +143,20 @@ const ChiSei: React.FC<ScreenProps> = ({ setPage, onNext, isWizard }) => {
         
         <div className="mt-10 flex flex-col sm:flex-row justify-between items-center gap-6">
           <div className="relative">
-             <input 
-                type="file" 
-                ref={fileInputRef} 
-                onChange={handleFileUpload} 
-                accept=".json" 
-                className="hidden" 
-             />
-             <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className={`text-[10px] font-black tracking-[0.2em] uppercase ${isProMode ? 'text-gray-500 hover:text-cyan-400' : 'text-gray-400 hover:text-blue-600'}`}
-             >
-                📂 CARICA BACKUP
-             </button>
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              onChange={handleFileUpload} 
+              accept=".json" 
+              className="hidden" 
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className={`text-[10px] font-black tracking-[0.2em] uppercase ${isProMode ? 'text-gray-500 hover:text-cyan-400' : 'text-gray-400 hover:text-blue-600'}`}
+            >
+              📂 CARICA BACKUP
+            </button>
           </div>
 
           <button
@@ -175,7 +167,7 @@ const ChiSei: React.FC<ScreenProps> = ({ setPage, onNext, isWizard }) => {
                 : 'bg-blue-600 text-white hover:bg-blue-700'
             }`}
           >
-            PROCEDI →
+            SALVA E PROCEDI →
           </button>
         </div>
       </form>

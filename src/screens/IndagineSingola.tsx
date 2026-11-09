@@ -1,4 +1,6 @@
+/* © 2026 Max Pisani - PACommunication. Tutti i diritti riservati. */
 import React, { useMemo, useRef, useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useUser } from '../contexts/UserContext';
 import CameraView from '../components/CameraView';
 import { AdvancedVoiceService, AutomatedResponse } from '../services/AdvancedVoiceService';
@@ -17,15 +19,24 @@ const daysInMonth: Record<string, number> = {
   Luglio: 31, Agosto: 31, Settembre: 30, Ottobre: 31, Novembre: 30, Dicembre: 31
 };
 
-interface ScreenProps { setPage: (page: number) => void; }
+interface ScreenProps {
+  setPage: (page: number | string) => void;
+}
 type Status = 'IDLE' | 'CALIBRATING' | 'TESTING' | 'SUCCESS' | 'ERROR';
 
 const IndagineSingola: React.FC<ScreenProps> = ({ setPage }) => {
+  const navigate = useNavigate();
   const { userData, setUserData } = useUser();
   const [status, setStatus] = useState<Status>('IDLE');
-  const [message, setMessage] = useState('Premi “Inizia calibrazione” per avviare l’indagine singola.');
+  const [message, setMessage] = useState('Premi "Inizia Calibrazione" per avviare l\'indagine nel tempo.');
   const [isCameraReady, setIsCameraReady] = useState(false);
-  const [summary, setSummary] = useState<{ age?: number; date?: string; witness?: string; justification?: string }>({});
+  const [summary, setSummary] = useState<{ age?: number; date?: string; witness?: string; justification?: string }>({
+    age: userData.timeLine?.etaEventoCausa ? parseInt(userData.timeLine.etaEventoCausa, 10) : undefined,
+    date: userData.giornoEvento || undefined,
+    witness: userData.testimoneChiave || undefined,
+    justification: userData.giustificatoTorto ? (userData.giustificatoTorto === 'SI' ? 'Giustificato' : 'Non Giustificato') : undefined
+  });
+
   const cameraRef = useRef<any>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const voiceService = useMemo(() => new AdvancedVoiceService(), []);
@@ -48,12 +59,15 @@ const IndagineSingola: React.FC<ScreenProps> = ({ setPage }) => {
     voiceService.cancel();
     setStatus('IDLE');
     setSummary({});
-    setMessage('Premi “Inizia calibrazione” per avviare l’indagine singola.');
+    setMessage('Premi "Inizia Calibrazione" per avviare l\'indagine nel tempo.');
   };
 
   const startCalibration = async () => {
     setStatus('CALIBRATING');
-    setMessage('Rimani immobile per la calibrazione...');
+    setMessage('Rimani immobile per la calibrazione della posizione...');
+    try {
+      await voiceService.speak("Stessa posizione: in piedi, braccia lungo il corpo. Dopo il conto alla rovescia inizieremo l'indagine nel tempo.");
+    } catch { /* ignore */ }
     if (cameraRef.current) {
       cameraRef.current.startCalibration();
     }
@@ -71,14 +85,18 @@ const IndagineSingola: React.FC<ScreenProps> = ({ setPage }) => {
     const CDT = Math.abs(PT - PU);
     const diagnosi = PT < PU ? 'Libertà Vincolata' : PT > PU ? 'Sogno Frustrato' : 'Equilibrio';
     return {
-      etaEventoCausa: String(age), PU, CDS, PT,
+      etaEventoCausa: String(age),
+      PU,
+      CDS,
+      PT,
       etaAntefatto: Math.round(etaAntefatto * 10) / 10,
       etaFatto: Math.round(computedEtaFatto * 10) / 10,
-      isFatto, CDT: Math.round(CDT * 10) / 10, diagnosi
+      isFatto,
+      CDT: Math.round(CDT * 10) / 10,
+      diagnosi
     } as const;
   };
 
-  // Strict rule: if detection is not SI or NO, repeat the exact same question until a valid SI/NO is detected
   const askWithStrictRepeat = async (questionText: string): Promise<'SI' | 'NO'> => {
     while (true) {
       setMessage(questionText);
@@ -86,29 +104,23 @@ const IndagineSingola: React.FC<ScreenProps> = ({ setPage }) => {
       if (response === 'SI' || response === 'NO') {
         return response;
       }
-      setMessage(`Risposta non rilevata. Ripeto la domanda...`);
-      await voiceService.speak("Risposta non rilevata. Ripeto la domanda.");
+      setMessage(`Risposta non rilevata chiaramente. Ripeto la domanda...`);
+      await voiceService.speak("Risposta non rilevata chiaramente. Ripeto la domanda.");
       await new Promise(res => setTimeout(res, 600));
     }
   };
 
   const runInvestigation = async () => {
-    const currentAge = parseInt(userData.eta, 10);
+    const currentAge = parseInt(userData.eta, 10) || 30;
     const nome = userData.nome || 'Amico';
-    const problema = userData.problema || 'il tuo problema';
-
-    if (Number.isNaN(currentAge) || currentAge <= 0) {
-      setStatus('ERROR');
-      setMessage('Inserisci la tua età corretta nei dati anagrafici (Chi Sei).');
-      return;
-    }
+    const problema = userData.problema || 'il tuo blocco emotivo o disagio';
 
     setStatus('TESTING');
     try {
-      // 1 & 2. Cause event question intro
-      await voiceService.speak(`Caro inconscio di ${nome}, quando accadde quell’evento che, se non fosse accaduto, oggi non avresti il problema: ${problema}?`);
+      // 1. Introduzione evento causa
+      await voiceService.speak(`Caro inconscio di ${nome}, quando accadde quell'evento passato che, se non fosse accaduto, oggi non avresti: ${problema}?`);
 
-      // 3. Age binary search
+      // 2. Età evento (ricerca binaria)
       let lower = 0;
       let upper = currentAge;
       while (upper - lower > 1) {
@@ -130,7 +142,7 @@ const IndagineSingola: React.FC<ScreenProps> = ({ setPage }) => {
       }));
       await voiceService.speak(`Ok, l'evento è accaduto a ${foundAge} anni. Ora cerchiamo la stagione.`);
 
-      // 4. Season search
+      // 3. Ricerca della stagione
       let foundSeason: SeasonKey | null = null;
       const seasonsList = Object.keys(seasons) as SeasonKey[];
       for (const season of seasonsList) {
@@ -142,7 +154,7 @@ const IndagineSingola: React.FC<ScreenProps> = ({ setPage }) => {
       }
       if (!foundSeason) foundSeason = 'Primavera';
 
-      // 5. Month search
+      // 4. Ricerca del mese
       let foundMonth: string | null = null;
       for (const month of seasons[foundSeason]) {
         const response = await askWithStrictRepeat(`L'evento accadde nel mese di ${month}? Sì o no, attendo risposta.`);
@@ -153,7 +165,7 @@ const IndagineSingola: React.FC<ScreenProps> = ({ setPage }) => {
       }
       if (!foundMonth) foundMonth = seasons[foundSeason][0];
 
-      // 6. Day binary search
+      // 5. Ricerca del giorno
       let lowerDay = 1;
       let upperDay = daysInMonth[foundMonth];
       while (upperDay > lowerDay) {
@@ -174,7 +186,7 @@ const IndagineSingola: React.FC<ScreenProps> = ({ setPage }) => {
       }));
       await voiceService.speak(`Avevi ${foundAge} anni, il ${foundDate}. Ora cerchiamo il testimone.`);
 
-      // 7. Witness gender search
+      // 6. Genere testimone
       const maleResponse = await askWithStrictRepeat('Era un uomo? Sì o no, attendo risposta.');
 
       const maleCandidates = ['Tuo padre', 'Tuo nonno', 'Tuo zio', 'Tuo fratello', 'Tuo cugino', 'Un insegnante', 'Un amico'];
@@ -189,13 +201,12 @@ const IndagineSingola: React.FC<ScreenProps> = ({ setPage }) => {
         candidates = femaleResponse === 'SI' ? femaleCandidates : maleCandidates;
       }
 
-      // 8. Witness specific figure search
+      // 7. Ricerca figura specifica
       let witness = 'Non identificato';
       for (const candidate of candidates) {
         const response = await askWithStrictRepeat(`Era ${candidate}? Sì o no, attendo risposta.`);
         if (response === 'SI') {
           witness = candidate;
-          // 9. Specificazione eventuale (Paterno / Materno)
           if (ambiguous.includes(candidate)) {
             const side = await askWithStrictRepeat('Da parte di papà? Sì o no, attendo risposta.');
             witness += side === 'SI' ? ' (Paterno)' : ' (Materno)';
@@ -206,12 +217,12 @@ const IndagineSingola: React.FC<ScreenProps> = ({ setPage }) => {
 
       setSummary(prev => ({ ...prev, witness }));
 
-      // 10. Final justification question: "Caro inconscio hai giustificato il torto ricevuto da (testimone) SI o NO, attendo risposta"
+      // 8. Domanda sulla giustificazione del torto
       const justificationResponse = await askWithStrictRepeat(`Caro inconscio, hai giustificato il torto ricevuto da ${witness}? Sì o no, attendo risposta.`);
       
       setSummary(prev => ({ ...prev, justification: justificationResponse === 'SI' ? 'Giustificato' : 'Non Giustificato' }));
 
-      // Salvataggio definitivo
+      // Salvataggio stato completo
       setUserData(prev => ({
         ...prev,
         testimoneChiave: witness,
@@ -226,12 +237,12 @@ const IndagineSingola: React.FC<ScreenProps> = ({ setPage }) => {
       }));
 
       setStatus('SUCCESS');
-      setMessage(`Indagine completata! Età: ${foundAge}; Data: ${foundDate}; Testimone: ${witness}; Torto: ${justificationResponse === 'SI' ? 'Giustificato' : 'Non Giustificato'}.`);
-      await voiceService.speak(`Indagine completata con successo. Testimone identificato: ${witness}. Torto ${justificationResponse === 'SI' ? 'giustificato' : 'non giustificato'}. Puoi procedere.`);
+      setMessage(`Indagine completata con successo! Età: ${foundAge} anni; Data: ${foundDate}; Testimone: ${witness}; Torto: ${justificationResponse === 'SI' ? 'Giustificato' : 'Non Giustificato'}.`);
+      await voiceService.speak(`Indagine completata con successo. Testimone identificato: ${witness}. Torto ${justificationResponse === 'SI' ? 'giustificato' : 'non giustificato'}. Puoi consultare l'esito.`);
     } catch (error) {
       console.error(error);
       setStatus('ERROR');
-      setMessage('Indagine interrotta o errore di rilevazione. Clicca su Ripeti per riprovare.');
+      setMessage('Indagine interrotta. Clicca su Ripeti per riprovare.');
     }
   };
 
@@ -241,45 +252,112 @@ const IndagineSingola: React.FC<ScreenProps> = ({ setPage }) => {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6 pb-24 relative">
+    <div className="bg-white rounded-2xl shadow-xl p-4 sm:p-6 pb-24 relative border border-slate-100">
       <div className="flex justify-between items-start mb-4">
         <div>
-          <h2 className="text-2xl font-bold text-gray-800">10) Indietro nel tempo</h2>
-          <h3 className="text-lg font-semibold text-gray-600">Età → Data → Testimone → Reazione</h3>
+          <span className="inline-block px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-indigo-100 text-indigo-800 mb-1">
+            Indagine Standalone
+          </span>
+          <h2 className="text-2xl font-serif font-black text-gray-900">Indietro nel Tempo (Grande Indagine)</h2>
+          <h3 className="text-sm font-medium text-gray-600">Età Evento → Data Esatta → Testimone Chiave → Reazione al Torto</h3>
         </div>
-        <button onClick={handleExit} className="text-sm text-blue-600 hover:underline">← Torna ai test</button>
+        <button
+          onClick={handleExit}
+          className="text-xs uppercase tracking-widest font-bold text-gray-500 hover:text-blue-600 border border-gray-200 px-3 py-1.5 rounded-lg transition"
+        >
+          &larr; Torna alla Home
+        </button>
       </div>
+
       <InfoBox>
-        <p>In questo test unificato indipendente, individueremo in un unico flusso continuo l’età, la data esatta, il testimone chiave e se giustificasti il torto ricevuto.</p>
+        <p>
+          Questa indagine indipendente individua in un unico ciclo continuo l'età esatta dell'evento causa, il periodo e giorno dell'anno, la figura di riferimento (testimone chiave) e l'atteggiamento del tuo inconscio verso il torto ricevuto.
+        </p>
       </InfoBox>
+
       <div className="my-6">
         <CameraView ref={cameraRef} videoRef={videoRef} onReady={handleCameraReady} onCalibrated={handleCalibrated} />
       </div>
-      <div className="text-center p-4 bg-gray-50 rounded-lg min-h-[100px] flex flex-col justify-center">
-        <p className={`font-semibold text-lg ${status === 'SUCCESS' ? 'text-green-600' : 'text-blue-800'}`}>{message}</p>
-        {summary.age && <p className="text-sm mt-2">Età evento: <strong>{summary.age}</strong></p>}
-        {summary.date && <p className="text-sm">Data evento: <strong>{summary.date}</strong></p>}
-        {summary.witness && <p className="text-sm">Testimone: <strong>{summary.witness}</strong></p>}
-        {summary.justification && <p className="text-sm">Torto: <strong>{summary.justification}</strong></p>}
+
+      <div className="text-center p-4 bg-slate-50 border border-slate-200 rounded-xl min-h-[90px] flex flex-col justify-center">
+        <p className={`font-semibold text-base ${status === 'SUCCESS' ? 'text-emerald-700' : 'text-slate-800'}`}>
+          {message}
+        </p>
       </div>
+
       <div className="mt-6 flex justify-center gap-3">
         {(status === 'IDLE' || status === 'ERROR') && (
-          <button onClick={startCalibration} disabled={!isCameraReady} className="bg-cyan-600 text-white font-bold py-3 px-8 rounded-lg disabled:bg-gray-400 hover:bg-cyan-700 transition">
-            Inizia calibrazione
+          <button
+            onClick={startCalibration}
+            disabled={!isCameraReady}
+            className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 px-8 rounded-xl shadow-lg transition duration-300 disabled:bg-gray-400 uppercase tracking-widest text-sm"
+          >
+            Inizia Calibrazione e Indagine
           </button>
         )}
         {(status === 'CALIBRATING' || status === 'TESTING') && (
-          <span className="text-blue-600 font-bold animate-pulse text-lg">Indagine in corso... Segui la voce guida.</span>
-        )}
-        {status === 'SUCCESS' && (
-          <>
-            <button onClick={resetTest} className="bg-gray-500 text-white font-bold py-3 px-6 rounded-lg hover:bg-gray-600 transition">Ripeti</button>
-            <button onClick={handleExit} className="bg-green-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-green-700 transition">Fine</button>
-          </>
+          <span className="text-indigo-600 font-bold animate-pulse text-base">
+            Indagine in corso... Segui la voce guida.
+          </span>
         )}
       </div>
+
+      {/* Standalone Outcome Box */}
+      {status === 'SUCCESS' && (
+        <div className="mt-6 p-6 rounded-2xl bg-gradient-to-br from-indigo-50 to-blue-50 border-2 border-indigo-200 text-slate-800 shadow-md animate-fadeIn">
+          <div className="flex items-center gap-3 mb-4">
+            <span className="text-3xl">⏳</span>
+            <div>
+              <h4 className="font-serif font-black text-xl text-indigo-950">Quadro Completo dell'Evento Passato</h4>
+              <p className="text-xs text-indigo-800 font-medium">Elementi emersi dal dialogo diretto con il tuo inconscio.</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 my-4">
+            <div className="p-3 bg-white rounded-xl border border-indigo-100 shadow-sm">
+              <span className="text-[10px] uppercase font-bold text-slate-500">1. Età dell'Evento Causa</span>
+              <p className="text-lg font-bold text-indigo-900">{summary.age} anni</p>
+            </div>
+            <div className="p-3 bg-white rounded-xl border border-indigo-100 shadow-sm">
+              <span className="text-[10px] uppercase font-bold text-slate-500">2. Data Esatta</span>
+              <p className="text-lg font-bold text-indigo-900">{summary.date || 'Non specificata'}</p>
+            </div>
+            <div className="p-3 bg-white rounded-xl border border-indigo-100 shadow-sm">
+              <span className="text-[10px] uppercase font-bold text-slate-500">3. Testimone Chiave</span>
+              <p className="text-lg font-bold text-indigo-900">{summary.witness || 'Non identificato'}</p>
+            </div>
+            <div className="p-3 bg-white rounded-xl border border-indigo-100 shadow-sm">
+              <span className="text-[10px] uppercase font-bold text-slate-500">4. Reazione al Torto</span>
+              <p className="text-lg font-bold text-indigo-900">{summary.justification || '-'}</p>
+            </div>
+          </div>
+
+          <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
+            <button
+              onClick={resetTest}
+              className="flex-1 bg-white hover:bg-slate-100 text-slate-700 font-bold py-3.5 px-4 rounded-xl border border-slate-300 transition duration-300 shadow-sm text-sm"
+            >
+              🔄 Ripeti Indagine
+            </button>
+            <button
+              onClick={() => setPage(0)}
+              className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 px-4 rounded-xl shadow-md transition duration-300 text-sm"
+            >
+              🏠 Torna ai Test
+            </button>
+            <button
+              onClick={() => navigate('/risultati')}
+              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 px-4 rounded-xl shadow-md transition duration-300 text-sm"
+            >
+              📊 Vedi Risultati Completi
+            </button>
+          </div>
+        </div>
+      )}
+
       <TestControls onRepeat={resetTest} onExit={handleExit} showControls={status === 'TESTING'} />
     </div>
   );
 };
+
 export default IndagineSingola;
