@@ -11,13 +11,14 @@
     "lint": "eslint ."
   },
   "dependencies": {
-    "@eslint/js": "^10.0.1",
+    "@eslint/js": "^9.21.0",
     "@google/genai": "^1.29.0",
     "@mediapipe/tasks-vision": "^0.10.35",
     "@remix-run/router": "1.15.3",
     "@tailwindcss/vite": "^4.3.0",
     "dotenv": "^17.4.2",
     "drizzle-orm": "^0.45.2",
+    "eslint": "^9.21.0",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^7.1.1",
     "express": "^5.2.1",
