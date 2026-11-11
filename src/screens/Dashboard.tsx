@@ -124,6 +124,24 @@ const Dashboard: React.FC = () => {
   return (
     <div className="space-y-6 animate-fadeIn relative pb-12">
       
+      {/* BANNER AUSILIO LIBRO */}
+      <div className="bg-gradient-to-r from-amber-50 via-orange-50 to-amber-50 border-2 border-amber-300 rounded-2xl p-4 text-amber-950 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm">
+        <div className="flex items-center gap-3">
+          <span className="text-3xl flex-shrink-0">📖</span>
+          <div>
+            <h3 className="font-serif font-black text-sm sm:text-base text-amber-950 tracking-tight">
+              Ausilio gratuito per lettori di Smettila di Soffrire
+            </h3>
+            <p className="text-xs text-amber-800 font-medium mt-0.5">
+              Guida pratica interattiva e test analogici a supporto della lettura del libro di Max Pisani
+            </p>
+          </div>
+        </div>
+        <span className="self-end sm:self-center px-3 py-1 bg-amber-200/90 text-amber-900 text-[11px] font-bold uppercase tracking-wider rounded-lg border border-amber-400/50 flex-shrink-0">
+          Supporto al Libro
+        </span>
+      </div>
+
       {/* HEADER: Progress Bar & Status */}
       <div className="bg-gradient-to-r from-blue-700 via-indigo-700 to-blue-900 backdrop-blur rounded-2xl p-4 text-white shadow-lg relative overflow-hidden flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border border-white/20">
         <div>

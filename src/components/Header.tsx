@@ -92,12 +92,20 @@ const Header: React.FC = () => {
               </h1>
           </div>
           
-          {/* Sottotitolo (Copyright su Home, Descrizione su altre pagine) */}
-          {/* Posizionato subito sotto il titolo principale */}
+          {/* Sottotitolo (Descrizione / Ausilio libro su Home, Descrizione su altre pagine) */}
           {subtitle && (
-              <p className={`text-[8px] leading-[17px] text-[#f3b900] mt-1 ${isDashboard ? 'font-light tracking-wide' : 'font-medium'}`}>
-                  {subtitle}
-              </p>
+              <div className="mt-1.5 flex justify-center max-w-md px-2">
+                {isDashboard ? (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-700/80 border border-blue-400/40 text-amber-300 text-xs sm:text-sm font-semibold tracking-wide shadow-sm text-center">
+                    <span>📖</span>
+                    <span>{subtitle}</span>
+                  </span>
+                ) : (
+                  <p className="text-xs text-[#f3b900] font-medium text-center">
+                    {subtitle}
+                  </p>
+                )}
+              </div>
           )}
       </div>
     </header>

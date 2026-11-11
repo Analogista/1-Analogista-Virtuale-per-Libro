@@ -50,7 +50,7 @@ const AppContent: React.FC = () => {
 
     switch (path) {
       case '/':
-        setHeader('Analogista Virtuale di Max Pisani', '© 2026 Max Pisani - PACommunication. Tutti i diritti riservati.');
+        setHeader('Analogista Virtuale di Max Pisani', 'Ausilio gratuito per lettori di Smettila di Soffrire');
         setProMode(false);
         break;
       case '/risultati':
