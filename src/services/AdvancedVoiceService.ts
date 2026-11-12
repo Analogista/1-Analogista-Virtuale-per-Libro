@@ -2,6 +2,28 @@ import { MotionDetectionService } from './MotionDetectionService';
 import { playFeedbackSound } from '../utils/sound';
 
 export type AutomatedResponse = 'SI' | 'NO' | 'NON_RILEVATO';
+export type VoiceStepStatus = 'COMPLETED' | 'CANCELLED' | 'VOICE_ERROR';
+
+export interface AskQuestionResult {
+    status: VoiceStepStatus;
+    response: AutomatedResponse | null;
+    attempts: number;
+}
+
+export class SessionGuard {
+    private cancelled = false;
+    constructor(private onCancel?: () => void) {}
+    public isCancelled(): boolean { return this.cancelled; }
+    public cancel(): void {
+        this.cancelled = true;
+        if (this.onCancel) this.onCancel();
+    }
+    public async delay(ms: number): Promise<boolean> {
+        if (this.cancelled) return false;
+        await new Promise(r => setTimeout(r, ms));
+        return !this.cancelled;
+    }
+}
 
 const INTERNAL_FALLBACK_KEY = "";
 
@@ -39,6 +61,7 @@ export class AdvancedVoiceService {
     private dynamicApiKey: string | null = null;
     private activeSettlers: (() => void)[] = [];
     private epoch = 0;
+    private isCancelledState = false;
 
     constructor() {
         AdvancedVoiceService.activeInstances.add(this);
@@ -167,6 +190,18 @@ export class AdvancedVoiceService {
         window.dispatchEvent(new CustomEvent('voiceStatusUpdate', { detail: { status, text } }));
     }
 
+    async askQuestionWithSingleRetry(question: string, userName = ''): Promise<AskQuestionResult> {
+        const attempt1 = await this.askQuestion(question, userName);
+        if (attempt1 !== 'NON_RILEVATO') return { status: 'COMPLETED', response: attempt1, attempts: 1 };
+        
+        const attempt2 = await this.askQuestion(question, userName);
+        return { 
+            status: 'COMPLETED', 
+            response: attempt2, 
+            attempts: 2 
+        };
+    }
+
     askQuestion(question: string, userName = ''): Promise<AutomatedResponse> {
         return new Promise((resolve) => {
             let done = false;
@@ -183,7 +218,15 @@ export class AdvancedVoiceService {
                 if (this.isPaused || myEpoch !== this.epoch) { settle('NON_RILEVATO'); return; }
                 this.isWaitingForResponse = true;
                 const questionText = question.replace(/\(nome\)/g, userName);
-                await this.speak(questionText);
+                
+                try {
+                    await this.speak(questionText);
+                } catch (e) {
+                    this.stopResponseDetection();
+                    settle('NON_RILEVATO');
+                    return;
+                }
+                
                 if (this.isPaused || myEpoch !== this.epoch) return;
                 setTimeout(() => { if (!this.isPaused && myEpoch === this.epoch) this.startResponseDetection(settle); }, 500);
             };
@@ -203,8 +246,10 @@ export class AdvancedVoiceService {
                 if (direction === 'forward') response = 'SI';
                 else if (direction === 'backward') response = 'NO';
                 else response = 'NON_RILEVATO';
+                
+                // Keep the feedback text
                 const feedbackText = response === 'SI' ? "Ho rilevato un SÌ." : response === 'NO' ? "Ho rilevato un NO." : "Non ho capito.";
-                await this.speak(feedbackText);
+                try { await this.speak(feedbackText); } catch { /* ignore */ }
                 settle(response);
             }
         };
@@ -213,7 +258,7 @@ export class AdvancedVoiceService {
         this.responseTimeout = window.setTimeout(async () => {
             if (this.isWaitingForResponse && !this.isPaused) {
                 this.stopResponseDetection();
-                await this.speak("Non ho rilevato nessun movimento.");
+                try { await this.speak("Non ho rilevato nessun movimento."); } catch { /* ignore */ }
                 settle('NON_RILEVATO');
             }
         }, 12000);
@@ -261,15 +306,17 @@ export class AdvancedVoiceService {
     }
 
     async speak(text: string): Promise<void> {
-        return new Promise((resolve) => {
+        return new Promise((resolve, reject) => {
             let done = false;
-            const settle = () => {
+            const settle = (err?: Error) => {
                 if (done) return;
                 done = true;
-                this.activeSettlers = this.activeSettlers.filter(s => s !== settle);
-                resolve();
+                this.activeSettlers = this.activeSettlers.filter(s => s !== settleWrapper);
+                if (err) reject(err);
+                else resolve();
             };
-            this.activeSettlers.push(settle);
+            const settleWrapper = () => settle();
+            this.activeSettlers.push(settleWrapper);
             const myEpoch = this.epoch;
             const execute = async () => {
                 if (this.isPaused || myEpoch !== this.epoch) { settle(); return; }
@@ -301,7 +348,7 @@ export class AdvancedVoiceService {
                             const audio = new Audio(`data:audio/mp3;base64,${data.audioContent}`);
                             this.currentAudio = audio;
                             audio.onended = () => { this.currentAudio = null; if (!this.isPaused) settle(); };
-                            audio.onerror = () => { this.currentAudio = null; settle(); };
+                            audio.onerror = () => { this.currentAudio = null; settle(new Error('Audio playback error')); };
                             await audio.play();
                             return;
                         }
@@ -311,18 +358,23 @@ export class AdvancedVoiceService {
                 setTimeout(() => {
                     if (myEpoch !== this.epoch) { settle(); return; }
                     let spoke = false;
-                    const finish = () => {
+                    const finish = (err?: any) => {
                         if (done) return;
                         clearTimeout(safety);
                         clearTimeout(kick);
                         clearTimeout(retryT);
                         this.currentUtterance = null;
-                        if (myEpoch === this.epoch && !spoke && !this.isPaused) {
-                            this.dispatchStatus('idle', 'DIAGNOSI: sintesi di sistema muta. Controlla volume multimediale e impostazioni TTS del dispositivo.');
+                        if (err) {
+                            console.warn("SpeechSynthesis error:", err);
+                            settle(new Error('SpeechSynthesis failed'));
+                        } else {
+                            if (myEpoch === this.epoch && !spoke && !this.isPaused) {
+                                this.dispatchStatus('idle', 'DIAGNOSI: sintesi di sistema muta.');
+                            }
+                            settle();
                         }
-                        settle();
                     };
-                    const safety = window.setTimeout(finish, Math.max(20000, text.length * 150));
+                    const safety = window.setTimeout(() => finish(new Error('Timeout')), Math.max(20000, text.length * 150));
                     const kick = window.setTimeout(() => { try { this.synthesis.resume(); } catch { /* ignore */ } }, 250);
                     const buildAndSpeak = () => {
                         if (myEpoch !== this.epoch) return;
@@ -338,8 +390,8 @@ export class AdvancedVoiceService {
                             voices.find(voice => voice.lang.includes('it'));
                         if (selectedVoice) utterance.voice = selectedVoice;
                         utterance.onstart = () => { spoke = true; };
-                        utterance.onend = finish;
-                        utterance.onerror = finish;
+                        utterance.onend = () => finish();
+                        utterance.onerror = (e) => finish(e);
                         this.synthesis.speak(utterance);
                     };
                     buildAndSpeak();

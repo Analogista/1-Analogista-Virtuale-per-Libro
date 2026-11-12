@@ -3,7 +3,7 @@ import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../contexts/UserContext';
 import CameraView from '../components/CameraView';
-import { AdvancedVoiceService } from '../services/AdvancedVoiceService';
+import { AdvancedVoiceService, SessionGuard } from '../services/AdvancedVoiceService';
 import InfoBox from '../components/InfoBox';
 import VideoAccordion from '../components/VideoAccordion';
 import TestControls from '../components/TestControls';
@@ -71,8 +71,10 @@ const TestSigilliVincoli: React.FC<ScreenProps> = ({ setPage }) => {
   };
 
   const handleExit = () => {
-    voiceService.cancel();
-    setPage(0);
+    if (window.confirm("Sei sicuro di voler uscire? La voce e il test verranno interrotti.")) {
+        voiceService.cancel();
+        setPage(0);
+    }
   };
 
   const completeTest = async (finalSigillo: string, finalMessage: string) => {
@@ -110,14 +112,18 @@ const TestSigilliVincoli: React.FC<ScreenProps> = ({ setPage }) => {
         disistima: `È la mancanza di autostima? Sì o no, attendo risposta.`
       };
 
+      const guard = new SessionGuard(() => voiceService.cancel());
+      await voiceService.speak(`Caro inconscio, individuiamo i vincoli emotivi attivi.`);
+
       for (const sigillo of Object.keys(sigilliMapping) as SigilloKey[]) {
         setMessage(`Indagine in corso: ${sigilliMapping[sigillo]}...`);
         const text = sigilliQuestionMapping[sigillo];
-        const response = await voiceService.askQuestion(text);
+        const res = await voiceService.askQuestionWithSingleRetry(text);
+        if (guard.isCancelled()) return;
 
-        setResults(prev => ({ ...prev, [sigillo]: response }));
-        currentSigilli[sigillo] = response;
-        await new Promise(res => setTimeout(res, 1200));
+        setResults(prev => ({ ...prev, [sigillo]: res.response }));
+        currentSigilli[sigillo] = res.response || 'NON_RILEVATO';
+        if (!await guard.delay(1200)) return;
       }
 
       setUserData(prev => ({ ...prev, sigilli: currentSigilli as any }));
@@ -138,8 +144,9 @@ const TestSigilliVincoli: React.FC<ScreenProps> = ({ setPage }) => {
         for (const sigillo of sigilliPresenti) {
           const sigilloName = sigilliMapping[sigillo];
           setMessage(`Vuoi risolvere: ${sigilloName}?`);
-          const priorityResponse = await voiceService.askQuestion(`Vuoi risolvere ${sigilloName}? Sì o no, attendo risposta.`);
-          if (priorityResponse === 'SI') {
+          const priorityRes = await voiceService.askQuestionWithSingleRetry(`Vuoi risolvere ${sigilloName}? Sì o no, attendo risposta.`);
+          if (guard.isCancelled()) return;
+          if (priorityRes.response === 'SI') {
             priorityFound = sigilloName;
             break;
           }
@@ -191,6 +198,7 @@ const TestSigilliVincoli: React.FC<ScreenProps> = ({ setPage }) => {
           videoRef={videoRef}
           onReady={handleCameraReady}
           onCalibrated={handleCalibrated}
+          showCalibrationButton={false}
         />
       </div>
 

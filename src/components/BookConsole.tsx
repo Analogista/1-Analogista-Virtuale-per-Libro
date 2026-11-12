@@ -109,7 +109,8 @@ export const BookConsole: React.FC<BookConsoleProps> = ({ onSelectTest, complete
           {isPhase1Open && (
             <div className="px-3.5 pb-3.5 sm:px-4 sm:pb-4 pt-1 border-t border-blue-100/80 animate-fadeIn">
               <p className="text-xs text-slate-600 leading-relaxed mb-3">
-                Serve a raccogliere un punto di partenza personale: definisce la tua tipologia emotiva, il referente primario, il riconoscimento del nome e i blocchi da sciogliere.
+                <strong>Fase 1 — Fotografia iniziale T0 con cinque test:</strong> T.A.P., Induttore, Nome, Punti Distonici, Sigilli/Vincoli. 
+                <span className="text-slate-500 font-medium"> (La calibrazione preparatoria è una guida di inquadratura corporea, non un test).</span>
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -117,7 +118,7 @@ export const BookConsole: React.FC<BookConsoleProps> = ({ onSelectTest, complete
                   { id: 'tap', title: '1. Test T.A.P.', label: 'Asta, Cerchio, Triangolo' },
                   { id: 'induttore', title: '2. Test Induttore', label: 'Libertà vs Sogno' },
                   { id: 'nome', title: '3. Test del Nome', label: 'Riconoscimento identità' },
-                  { id: 'puntiDistonici', title: '4. Test Punti Distonici', label: 'Le 4 aree di vita' },
+                  { id: 'puntiDistonici', title: '4. Test Punti Distonici', label: 'Aree di vita' },
                   { id: 'sigilli', title: '5. Test Sigilli e Vincoli', label: 'Blocchi emotivi specifici' },
                 ].map((t) => {
                   const isDone = !!completedTests[t.id];
@@ -175,7 +176,7 @@ export const BookConsole: React.FC<BookConsoleProps> = ({ onSelectTest, complete
                   </span>
                 </div>
                 <p className="text-xs font-semibold text-indigo-700 truncate mt-0.5">
-                  Scegli cosa esplorare
+                  Scegli cosa esplorare in base a ciò che è emerso
                 </p>
               </div>
             </div>
@@ -198,7 +199,8 @@ export const BookConsole: React.FC<BookConsoleProps> = ({ onSelectTest, complete
           {isPhase2Open && (
             <div className="px-3.5 pb-3.5 sm:px-4 sm:pb-4 pt-1 border-t border-indigo-100/80 animate-fadeIn">
               <p className="text-xs text-slate-600 leading-relaxed mb-3">
-                Nessun percorso obbligatorio: approfondisci solo i temi scelti da te quando la lettura del libro richiama un evento passato o una figura specifica.
+                <strong>Fase 2 — Approfondimenti scelti liberamente:</strong> Grande Indagine, Quale Giorno e Testimone Chiave/Torto. 
+                <span className="text-slate-500 font-medium"> (La Time Line resta un calcolo separato per individuare l'età causa).</span>
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
@@ -282,7 +284,7 @@ export const BookConsole: React.FC<BookConsoleProps> = ({ onSelectTest, complete
           {isPhase3Open && (
             <div className="px-3.5 pb-3.5 sm:px-4 sm:pb-4 pt-1 border-t border-slate-200 animate-fadeIn">
               <p className="text-xs text-slate-600 leading-relaxed mb-3">
-                Nel progetto sarà disponibile nell'ultima settimana del percorso e rimarrà accessibile anche dopo i 21 giorni per verificare le distonie e avviare un nuovo ciclo di benessere.
+                <strong>Fase 3 — Check-in dal giorno 15 e anche dopo il giorno 21:</strong> Per verificare lo stato delle distonie ed eventualmente avviare un nuovo ciclo di riequilibrio emotivo.
               </p>
 
               <div className="p-3 rounded-lg bg-slate-50 border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">

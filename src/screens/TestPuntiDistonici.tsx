@@ -3,7 +3,7 @@ import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../contexts/UserContext';
 import CameraView from '../components/CameraView';
-import { AdvancedVoiceService } from '../services/AdvancedVoiceService';
+import { AdvancedVoiceService, SessionGuard } from '../services/AdvancedVoiceService';
 import InfoBox from '../components/InfoBox';
 import VideoAccordion from '../components/VideoAccordion';
 import TestControls from '../components/TestControls';
@@ -71,8 +71,10 @@ const TestPuntiDistonici: React.FC<ScreenProps> = ({ setPage }) => {
   };
 
   const handleExit = () => {
-    voiceService.cancel();
-    setPage(0);
+    if (window.confirm("Sei sicuro di voler uscire? La voce e il test verranno interrotti.")) {
+        voiceService.cancel();
+        setPage(0);
+    }
   };
 
   const completeTest = async (finalPunto: string, finalMessage: string) => {
@@ -95,17 +97,19 @@ const TestPuntiDistonici: React.FC<ScreenProps> = ({ setPage }) => {
     const currentPuntiDistonici: Record<string, string> = {};
     const nome = userData.nome ? userData.nome : 'Amico';
 
+    const guard = new SessionGuard(() => voiceService.cancel());
     try {
       await voiceService.speak(`Caro inconscio di ${nome}, adesso verifichiamo le 4 aree fondamentali della tua vita per individuare eventuali punti distonici.`);
 
       for (const punto of Object.keys(puntiMapping) as PuntoKey[]) {
         setMessage(`Indagine in corso: ${puntiMapping[punto]}...`);
         const text = `Caro inconscio, sei soddisfatto di come ${nome} sta gestendo i ${puntiMapping[punto]}? Sì o No? Attendo risposta.`;
-        const response = await voiceService.askQuestion(text);
+        const res = await voiceService.askQuestionWithSingleRetry(text);
+        if (guard.isCancelled()) return;
 
-        setResults(prev => ({ ...prev, [punto]: response }));
-        currentPuntiDistonici[punto] = response;
-        await new Promise(res => setTimeout(res, 1200));
+        setResults(prev => ({ ...prev, [punto]: res.response }));
+        currentPuntiDistonici[punto] = res.response || 'NON_RILEVATO';
+        if (!await guard.delay(1200)) return;
       }
 
       setUserData(prev => ({
@@ -131,8 +135,9 @@ const TestPuntiDistonici: React.FC<ScreenProps> = ({ setPage }) => {
         for (const punto of nonSoddisfatti) {
           const nomeArea = puntiMapping[punto];
           setMessage(`Vuoi risolvere subito: ${nomeArea}?`);
-          const priorityResponse = await voiceService.askQuestion(`Vuoi risolvere ${nomeArea}? Sì o no, attendo risposta.`);
-          if (priorityResponse === 'SI') {
+          const priorityRes = await voiceService.askQuestionWithSingleRetry(`Vuoi risolvere ${nomeArea}? Sì o no, attendo risposta.`);
+          if (guard.isCancelled()) return;
+          if (priorityRes.response === 'SI') {
             identifiedPunto = nomeArea;
             break;
           }
@@ -159,7 +164,7 @@ const TestPuntiDistonici: React.FC<ScreenProps> = ({ setPage }) => {
             Test Standalone
           </span>
           <h2 className="text-2xl font-serif font-black text-gray-900">Test Punti Distonici</h2>
-          <h3 className="text-sm font-medium text-gray-600">Le 4 Aree della Vita: famiglia, sentimenti, passioni, realizzazione</h3>
+          <h3 className="text-sm font-medium text-gray-600">Aree della Vita: famiglia, sentimenti, passioni, realizzazione</h3>
         </div>
         <button
           onClick={handleExit}
@@ -173,7 +178,7 @@ const TestPuntiDistonici: React.FC<ScreenProps> = ({ setPage }) => {
 
       <InfoBox>
         <p>
-          Posizionati in piedi di fronte alla webcam con il busto centrato. Il test indaga in modo indipendente le 4 aree fondamentali della tua vita (famiglia, affetti, passioni, autorealizzazione) per individuare dove si annidano i disagi emotivi.
+          Posizionati in piedi di fronte alla webcam con il busto centrato. Il test indaga in modo indipendente le aree fondamentali della tua vita (famiglia, affetti, passioni, autorealizzazione) per individuare dove si annidano i disagi emotivi.
         </p>
       </InfoBox>
 
@@ -184,6 +189,7 @@ const TestPuntiDistonici: React.FC<ScreenProps> = ({ setPage }) => {
           videoRef={videoRef}
           onReady={handleCameraReady}
           onCalibrated={handleCalibrated}
+          showCalibrationButton={false}
         />
       </div>
 
@@ -211,7 +217,7 @@ const TestPuntiDistonici: React.FC<ScreenProps> = ({ setPage }) => {
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
             <span className="text-blue-800 font-bold text-sm">
-              {status === 'TESTING' ? 'Test delle 4 aree in corso...' : 'Scelta dell\'area prioritaria...'}
+              {status === 'TESTING' ? 'Test delle aree della vita in corso...' : 'Scelta dell\'area prioritaria...'}
             </span>
           </div>
         )}

@@ -18,11 +18,12 @@ const TestControls: React.FC<TestControlsProps> = ({ onRepeat, onExit, showContr
                 {/* PULSANTE RIPETI */}
                 <button 
                     onClick={() => {
-                        AdvancedVoiceService.stopAll();
                         if(window.confirm("Vuoi davvero ricominciare il test?")) {
+                            AdvancedVoiceService.stopAll();
                             onRepeat();
                         }
                     }}
+                    data-keep-voice="true"
                     className="flex flex-col items-center justify-center w-20 py-2.5 bg-gray-800/50 hover:bg-red-900/40 text-gray-300 hover:text-red-400 rounded-2xl transition-all border border-white/5"
                     title="RIPETI"
                 >
@@ -37,9 +38,12 @@ const TestControls: React.FC<TestControlsProps> = ({ onRepeat, onExit, showContr
                         <div className="w-px h-12 bg-white/10 mx-1"></div>
                         <button 
                             onClick={() => {
-                                AdvancedVoiceService.stopAll();
-                                onExit();
+                                if (window.confirm("Sei sicuro di voler uscire? La voce e il test verranno interrotti.")) {
+                                    AdvancedVoiceService.stopAll();
+                                    onExit();
+                                }
                             }}
+                            data-keep-voice="true"
                             className="flex flex-col items-center justify-center w-24 py-2.5 bg-white/5 hover:bg-white/10 text-white rounded-2xl transition-all border border-white/10"
                             title="Esci"
                         >

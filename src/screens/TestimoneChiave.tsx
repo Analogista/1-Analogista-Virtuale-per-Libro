@@ -3,7 +3,7 @@ import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../contexts/UserContext';
 import CameraView from '../components/CameraView';
-import { AdvancedVoiceService } from '../services/AdvancedVoiceService';
+import { AdvancedVoiceService, SessionGuard } from '../services/AdvancedVoiceService';
 import InfoBox from '../components/InfoBox';
 import VideoAccordion from '../components/VideoAccordion';
 import TestControls from '../components/TestControls';
@@ -61,8 +61,10 @@ const TestimoneChiave: React.FC<ScreenProps> = ({ setPage }) => {
   };
 
   const handleExit = () => {
-    voiceService.cancel();
-    setPage(0);
+    if (window.confirm("Sei sicuro di voler uscire? La voce e il test verranno interrotti.")) {
+        voiceService.cancel();
+        setPage(0);
+    }
   };
     
   const startTest = async () => {
@@ -72,6 +74,7 @@ const TestimoneChiave: React.FC<ScreenProps> = ({ setPage }) => {
     const testimoniFemmine = ["Tua madre", "Tua nonna", "Tua zia", "Tua sorella", "Tua cugina", "Un'insegnante", "Un'amica"];
     const parentiAmbigui = ["Tuo nonno", "Tuo zio", "Tuo cugino", "Tua nonna", "Tua zia", "Tua cugina"];
 
+    const guard = new SessionGuard(() => voiceService.cancel());
     try {
       const introText = sigilloFinale && timeLine?.etaEventoCausa
         ? `Adesso andremo a ricercare quel soggetto, maschio o femmina, legato al sigillo "${sigilloFinale}" all'età di ${timeLine.etaEventoCausa} anni.`
@@ -79,17 +82,21 @@ const TestimoneChiave: React.FC<ScreenProps> = ({ setPage }) => {
 
       setMessage("Introduzione in corso...");
       await voiceService.speak(introText);
-      await new Promise(res => setTimeout(res, 1000));
+      if (!await guard.delay(1000)) return;
 
       setMessage("L'evento fu causato o vissuto con un uomo? (Sì/No)");
-      let response = await voiceService.askQuestion("Era un uomo? Sì o No, attendo risposta.");
+      const res1 = await voiceService.askQuestionWithSingleRetry("Era un uomo? Sì o No, attendo risposta.");
+      if (guard.isCancelled()) return;
+      let response = res1.response || 'NON_RILEVATO';
 
       let testimoniDaTestare: string[] = [];
       if (response === 'SI') {
         testimoniDaTestare = testimoniMaschi;
       } else if (response === 'NO') {
         setMessage("L'evento fu vissuto con una donna? (Sì/No)");
-        response = await voiceService.askQuestion("Era una donna? Sì o No, attendo risposta.");
+        const res2 = await voiceService.askQuestionWithSingleRetry("Era una donna? Sì o No, attendo risposta.");
+        if (guard.isCancelled()) return;
+        response = res2.response || 'NON_RILEVATO';
         if (response === 'SI') {
           testimoniDaTestare = testimoniFemmine;
         } else {
@@ -105,12 +112,14 @@ const TestimoneChiave: React.FC<ScreenProps> = ({ setPage }) => {
       let selectedWitness = 'Non identificato';
       for (const testimone of testimoniDaTestare) {
         setMessage(`Era ${testimone}?`);
-        const resp = await voiceService.askQuestion(`Era ${testimone}? Sì o No, attendo risposta.`);
-        if (resp === 'SI') {
+        const res = await voiceService.askQuestionWithSingleRetry(`Era ${testimone}? Sì o No, attendo risposta.`);
+        if (guard.isCancelled()) return;
+        if (res.response === 'SI') {
           selectedWitness = testimone;
           if (parentiAmbigui.includes(testimone)) {
-            const side = await voiceService.askQuestion("Da parte di papà? Sì o No, attendo risposta.");
-            selectedWitness += side === 'SI' ? ' (Paterno)' : ' (Materno)';
+            const sideRes = await voiceService.askQuestionWithSingleRetry("Da parte di papà? Sì o No, attendo risposta.");
+            if (guard.isCancelled()) return;
+            selectedWitness += sideRes.response === 'SI' ? ' (Paterno)' : ' (Materno)';
           }
           break;
         }
@@ -155,7 +164,7 @@ const TestimoneChiave: React.FC<ScreenProps> = ({ setPage }) => {
       </InfoBox>
 
       <div className="my-6">
-        <CameraView ref={cameraRef} videoRef={videoRef} onReady={handleCameraReady} onCalibrated={handleCalibrated} />
+        <CameraView ref={cameraRef} videoRef={videoRef} onReady={handleCameraReady} onCalibrated={handleCalibrated} showCalibrationButton={false} />
       </div>
 
       <div className="my-6 flex justify-center">

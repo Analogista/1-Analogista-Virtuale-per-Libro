@@ -11,13 +11,14 @@ interface CameraViewProps {
   onCalibrated?: () => void;
   sensitivity?: number;
   onVoiceGuide?: () => void;
+  showCalibrationButton?: boolean;
 }
 
 export interface CameraViewRef {
   startCalibration: () => void;
 }
 
-const CameraView = React.forwardRef<CameraViewRef, CameraViewProps>(({ videoRef, onReady, onServiceId, showSilhouette = true, onError, onCalibrated, sensitivity = 75, onVoiceGuide }, ref) => {
+const CameraView = React.forwardRef<CameraViewRef, CameraViewProps>(({ videoRef, onReady, onServiceId, showSilhouette = true, onError, onCalibrated, sensitivity = 75, onVoiceGuide, showCalibrationButton = true }, ref) => {
   const [error, setError] = useState<string | null>(null);
   const [detectedResult, setDetectedResult] = useState<'SI' | 'NO' | null>(null);
   const [depthInfo, setDepthInfo] = useState({ delta: 0, threshold: 0.05 });
@@ -275,13 +276,15 @@ const CameraView = React.forwardRef<CameraViewRef, CameraViewProps>(({ videoRef,
 
         {/* DESIGN RIMODULATO: Entrambi i bottoni visibili */}
         <div className="flex justify-center gap-3 flex-wrap">
-          <button 
-            onClick={handleCalibrate}
-            disabled={isCalibrating || !isReady}
-            className="px-6 py-2.5 bg-white/10 hover:bg-white/20 border border-white/10 disabled:opacity-30 text-white font-mono font-bold text-[10px] tracking-widest uppercase rounded-xl transition-all active:scale-95"
-          >
-            {isCalibrating ? 'Calibrazione...' : '▶ AVVIA CALIBRAZIONE'}
-          </button>
+          {showCalibrationButton && (
+            <button 
+              onClick={handleCalibrate}
+              disabled={isCalibrating || !isReady}
+              className="px-6 py-2.5 bg-white/10 hover:bg-white/20 border border-white/10 disabled:opacity-30 text-white font-mono font-bold text-[10px] tracking-widest uppercase rounded-xl transition-all active:scale-95"
+            >
+              {isCalibrating ? 'Calibrazione...' : '▶ AVVIA CALIBRAZIONE'}
+            </button>
+          )}
 
           {onVoiceGuide && (
             <button 

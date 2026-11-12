@@ -88,7 +88,7 @@ const SimpleRadarChart: React.FC<{ data: { subject: string; A: number; fullMark:
     );
 };
 
-const Risultati: React.FC<ScreenProps> = () => {
+const Risultati: React.FC<ScreenProps> = ({ setPage }) => {
   const { userData } = useUser();
   const { apiKey, setApiKey } = useApiKey();
   const { user } = useAuth();
@@ -453,8 +453,18 @@ const Risultati: React.FC<ScreenProps> = () => {
 
   return (
     <div className="bg-gray-50 rounded-lg shadow-lg p-4 sm:p-6 print:bg-white">
-      <div className="print:hidden">
-        <h2 className="text-3xl font-bold text-gray-800 mb-4 text-center">Riepilogo dei Risultati</h2>
+      <div className="print:hidden flex flex-col sm:flex-row justify-between items-center mb-6 gap-3 border-b border-gray-200 pb-4">
+        <button
+          onClick={() => {
+            if (setPage) setPage(0);
+            else navigate('/');
+          }}
+          className="text-xs uppercase tracking-widest font-bold text-gray-700 hover:text-blue-600 border border-gray-300 px-3.5 py-2 rounded-xl transition shadow-sm bg-white flex items-center gap-1.5"
+        >
+          &larr; Torna alla Home
+        </button>
+        <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 text-center flex-1">Riepilogo dei Risultati</h2>
+        <div className="hidden sm:block w-32"></div>
       </div>
 
       <div className="bg-indigo-50 border-l-4 border-indigo-500 p-5 mb-6 rounded-r shadow-sm">
@@ -605,6 +615,15 @@ const Risultati: React.FC<ScreenProps> = () => {
       </div>
 
       <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center items-center no-print">
+          <button 
+            onClick={() => {
+              if (setPage) setPage(0);
+              else navigate('/');
+            }} 
+            className="bg-slate-800 text-white font-bold py-2 px-6 rounded-lg hover:bg-slate-700 transition duration-300 shadow-lg flex items-center gap-2"
+          >
+            🏠 Torna alla Home
+          </button>
           {user && (
             <button 
                 onClick={handleSaveSession} 

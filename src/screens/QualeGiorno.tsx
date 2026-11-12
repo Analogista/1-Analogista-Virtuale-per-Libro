@@ -3,7 +3,7 @@ import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../contexts/UserContext';
 import CameraView from '../components/CameraView';
-import { AdvancedVoiceService } from '../services/AdvancedVoiceService';
+import { AdvancedVoiceService, SessionGuard } from '../services/AdvancedVoiceService';
 import InfoBox from '../components/InfoBox';
 import VideoAccordion from '../components/VideoAccordion';
 import TestControls from '../components/TestControls';
@@ -55,8 +55,10 @@ const QualeGiorno: React.FC<ScreenProps> = ({ setPage }) => {
   };
 
   const handleExit = () => {
-    voiceService.cancel();
-    setPage(0);
+    if (window.confirm("Sei sicuro di voler uscire? La voce e il test verranno interrotti.")) {
+        voiceService.cancel();
+        setPage(0);
+    }
   };
     
   const startTest = async () => {
@@ -75,8 +77,9 @@ const QualeGiorno: React.FC<ScreenProps> = ({ setPage }) => {
       // 1. Stagione
       for (const season of Object.keys(seasons) as SeasonKey[]) {
         setMessage(`L'evento accadde in ${season}? (Sì/No)`);
-        const response = await voiceService.askQuestion(`Era in ${season}? Sì o no, attendo risposta.`);
-        if (response === 'SI') {
+        const res = await voiceService.askQuestionWithSingleRetry(`Era in ${season}? Sì o no, attendo risposta.`);
+        if (guard.isCancelled()) return;
+        if (res.response === 'SI') {
           foundSeason = season;
           break;
         }
@@ -87,8 +90,9 @@ const QualeGiorno: React.FC<ScreenProps> = ({ setPage }) => {
       // 2. Mese
       for (const month of seasons[foundSeason]) {
         setMessage(`Era nel mese di ${month}? (Sì/No)`);
-        const response = await voiceService.askQuestion(`Era nel mese di ${month}? Sì o no, attendo risposta.`);
-        if (response === 'SI') {
+        const res = await voiceService.askQuestionWithSingleRetry(`Era nel mese di ${month}? Sì o no, attendo risposta.`);
+        if (guard.isCancelled()) return;
+        if (res.response === 'SI') {
           foundMonth = month;
           break;
         }
@@ -99,14 +103,22 @@ const QualeGiorno: React.FC<ScreenProps> = ({ setPage }) => {
       // 3. Giorno (Ricerca Binaria)
       let lowerBound = 1;
       let upperBound = daysInMonth[foundMonth];
+      const guard = new SessionGuard(() => voiceService.cancel());
       
       while (upperBound > lowerBound) {
         const midPoint = Math.floor(lowerBound + (upperBound - lowerBound) / 2);
         const question = `L'evento accadde prima del giorno ${midPoint + 1} di ${foundMonth}? Sì o no?`;
         setMessage(`Accadde prima del ${midPoint + 1} ${foundMonth}?`);
-        const response = await voiceService.askQuestion(question);
+        const res = await voiceService.askQuestionWithSingleRetry(question);
+        if (guard.isCancelled()) return;
+        
+        if (res.response === 'NON_RILEVATO') {
+            setMessage('Ricerca interrotta: risposta non rilevata.');
+            setStatus('IDLE');
+            return;
+        }
 
-        if (response === 'SI') {
+        if (res.response === 'SI') {
           upperBound = midPoint;
         } else {
           lowerBound = midPoint + 1;
@@ -153,7 +165,7 @@ const QualeGiorno: React.FC<ScreenProps> = ({ setPage }) => {
       </InfoBox>
       
       <div className="my-6">
-        <CameraView videoRef={videoRef} onReady={handleCameraReady} />
+        <CameraView videoRef={videoRef} onReady={handleCameraReady} showCalibrationButton={false} />
       </div>
 
       <div className="text-center p-4 bg-slate-50 border border-slate-200 rounded-xl min-h-[80px] flex flex-col items-center justify-center">

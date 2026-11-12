@@ -3,7 +3,7 @@ import React, { useMemo, useRef, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../contexts/UserContext';
 import CameraView from '../components/CameraView';
-import { AdvancedVoiceService, AutomatedResponse } from '../services/AdvancedVoiceService';
+import { AdvancedVoiceService, SessionGuard } from '../services/AdvancedVoiceService';
 import InfoBox from '../components/InfoBox';
 import TestControls from '../components/TestControls';
 
@@ -51,8 +51,10 @@ const IndagineSingola: React.FC<ScreenProps> = ({ setPage }) => {
   };
 
   const handleExit = () => {
-    voiceService.cancel();
-    setPage(0);
+    if (window.confirm("Sei sicuro di voler uscire? La voce e il test verranno interrotti.")) {
+        voiceService.cancel();
+        setPage(0);
+    }
   };
 
   const resetTest = () => {
@@ -97,36 +99,35 @@ const IndagineSingola: React.FC<ScreenProps> = ({ setPage }) => {
     } as const;
   };
 
-  const askWithStrictRepeat = async (questionText: string): Promise<'SI' | 'NO'> => {
-    while (true) {
+  const askWithStrictRepeat = async (questionText: string, guard: SessionGuard): Promise<'SI' | 'NO' | 'NON_RILEVATO'> => {
       setMessage(questionText);
-      const response: AutomatedResponse = await voiceService.askQuestion(questionText);
-      if (response === 'SI' || response === 'NO') {
-        return response;
-      }
-      setMessage(`Risposta non rilevata chiaramente. Ripeto la domanda...`);
-      await voiceService.speak("Risposta non rilevata chiaramente. Ripeto la domanda.");
-      await new Promise(res => setTimeout(res, 600));
-    }
+      const res = await voiceService.askQuestionWithSingleRetry(questionText);
+      if (guard.isCancelled()) return 'NON_RILEVATO';
+      return res.response || 'NON_RILEVATO';
   };
 
   const runInvestigation = async () => {
     const currentAge = parseInt(userData.eta, 10) || 30;
     const nome = userData.nome || 'Amico';
     const problema = userData.problema || 'il tuo blocco emotivo o disagio';
+    const guard = new SessionGuard(() => voiceService.cancel());
 
     setStatus('TESTING');
     try {
       // 1. Introduzione evento causa
       await voiceService.speak(`Caro inconscio di ${nome}, quando accadde quell'evento passato che, se non fosse accaduto, oggi non avresti: ${problema}?`);
+      if (!await guard.delay(500)) return;
 
       // 2. Età evento (ricerca binaria)
       let lower = 0;
       let upper = currentAge;
       while (upper - lower > 1) {
         const midpoint = Math.floor(lower + (upper - lower) / 2);
-        const response = await askWithStrictRepeat(`L'evento è accaduto prima dei ${midpoint} anni? Sì o no, attendo risposta.`);
-        if (response === 'SI') {
+        const res = await askWithStrictRepeat(`L'evento è accaduto prima dei ${midpoint} anni? Sì o no, attendo risposta.`, guard);
+        if (guard.isCancelled()) return;
+        if (res === 'NON_RILEVATO') { setStatus('IDLE'); setMessage('Ricerca interrotta.'); return; }
+        
+        if (res === 'SI') {
           upper = midpoint;
         } else {
           lower = midpoint;
@@ -141,13 +142,16 @@ const IndagineSingola: React.FC<ScreenProps> = ({ setPage }) => {
         completedTests: { ...prev.completedTests, timeLine: true }
       }));
       await voiceService.speak(`Ok, l'evento è accaduto a ${foundAge} anni. Ora cerchiamo la stagione.`);
+      if (!await guard.delay(500)) return;
 
       // 3. Ricerca della stagione
       let foundSeason: SeasonKey | null = null;
       const seasonsList = Object.keys(seasons) as SeasonKey[];
       for (const season of seasonsList) {
-        const response = await askWithStrictRepeat(`L'evento accadde in ${season}? Sì o no, attendo risposta.`);
-        if (response === 'SI') {
+        const res = await askWithStrictRepeat(`L'evento accadde in ${season}? Sì o no, attendo risposta.`, guard);
+        if (guard.isCancelled()) return;
+        if (res === 'NON_RILEVATO') { setStatus('IDLE'); setMessage('Ricerca interrotta.'); return; }
+        if (res === 'SI') {
           foundSeason = season;
           break;
         }
@@ -157,8 +161,10 @@ const IndagineSingola: React.FC<ScreenProps> = ({ setPage }) => {
       // 4. Ricerca del mese
       let foundMonth: string | null = null;
       for (const month of seasons[foundSeason]) {
-        const response = await askWithStrictRepeat(`L'evento accadde nel mese di ${month}? Sì o no, attendo risposta.`);
-        if (response === 'SI') {
+        const res = await askWithStrictRepeat(`L'evento accadde nel mese di ${month}? Sì o no, attendo risposta.`, guard);
+        if (guard.isCancelled()) return;
+        if (res === 'NON_RILEVATO') { setStatus('IDLE'); setMessage('Ricerca interrotta.'); return; }
+        if (res === 'SI') {
           foundMonth = month;
           break;
         }
@@ -170,8 +176,11 @@ const IndagineSingola: React.FC<ScreenProps> = ({ setPage }) => {
       let upperDay = daysInMonth[foundMonth];
       while (upperDay > lowerDay) {
         const midpoint = Math.floor(lowerDay + (upperDay - lowerDay) / 2);
-        const response = await askWithStrictRepeat(`Accadde prima del giorno ${midpoint + 1} di ${foundMonth}? Sì o no, attendo risposta.`);
-        if (response === 'SI') {
+        const res = await askWithStrictRepeat(`Accadde prima del giorno ${midpoint + 1} di ${foundMonth}? Sì o no, attendo risposta.`, guard);
+        if (guard.isCancelled()) return;
+        if (res === 'NON_RILEVATO') { setStatus('IDLE'); setMessage('Ricerca interrotta.'); return; }
+        
+        if (res === 'SI') {
           upperDay = midpoint;
         } else {
           lowerDay = midpoint + 1;
@@ -185,31 +194,39 @@ const IndagineSingola: React.FC<ScreenProps> = ({ setPage }) => {
         completedTests: { ...prev.completedTests, qualeGiorno: true }
       }));
       await voiceService.speak(`Avevi ${foundAge} anni, il ${foundDate}. Ora cerchiamo il testimone.`);
+      if (!await guard.delay(500)) return;
 
       // 6. Genere testimone
-      const maleResponse = await askWithStrictRepeat('Era un uomo? Sì o no, attendo risposta.');
+      const resMale = await askWithStrictRepeat('Era un uomo? Sì o no, attendo risposta.', guard);
+      if (guard.isCancelled()) return;
+      if (resMale === 'NON_RILEVATO') { setStatus('IDLE'); setMessage('Ricerca interrotta.'); return; }
 
       const maleCandidates = ['Tuo padre', 'Tuo nonno', 'Tuo zio', 'Tuo fratello', 'Tuo cugino', 'Un insegnante', 'Un amico'];
       const femaleCandidates = ['Tua madre', 'Tua nonna', 'Tua zia', 'Tua sorella', 'Tua cugina', "Un'insegnante", "Un'amica"];
       const ambiguous = ['Tuo nonno', 'Tuo zio', 'Tuo cugino', 'Tua nonna', 'Tua zia', 'Tua cugina'];
       
       let candidates: string[];
-      if (maleResponse === 'SI') {
+      if (resMale === 'SI') {
         candidates = maleCandidates;
       } else {
-        const femaleResponse = await askWithStrictRepeat('Era una donna? Sì o no, attendo risposta.');
-        candidates = femaleResponse === 'SI' ? femaleCandidates : maleCandidates;
+        const resFemale = await askWithStrictRepeat('Era una donna? Sì o no, attendo risposta.', guard);
+        if (guard.isCancelled()) return;
+        if (resFemale === 'NON_RILEVATO') { setStatus('IDLE'); setMessage('Ricerca interrotta.'); return; }
+        candidates = resFemale === 'SI' ? femaleCandidates : maleCandidates;
       }
 
       // 7. Ricerca figura specifica
       let witness = 'Non identificato';
       for (const candidate of candidates) {
-        const response = await askWithStrictRepeat(`Era ${candidate}? Sì o no, attendo risposta.`);
-        if (response === 'SI') {
+        const res = await askWithStrictRepeat(`Era ${candidate}? Sì o No, attendo risposta.`, guard);
+        if (guard.isCancelled()) return;
+        if (res === 'NON_RILEVATO') { setStatus('IDLE'); setMessage('Ricerca interrotta.'); return; }
+        if (res === 'SI') {
           witness = candidate;
           if (ambiguous.includes(candidate)) {
-            const side = await askWithStrictRepeat('Da parte di papà? Sì o no, attendo risposta.');
-            witness += side === 'SI' ? ' (Paterno)' : ' (Materno)';
+            const sideRes = await askWithStrictRepeat('Da parte di papà? Sì o No, attendo risposta.', guard);
+            if (guard.isCancelled()) return;
+            witness += sideRes === 'SI' ? ' (Paterno)' : ' (Materno)';
           }
           break;
         }
@@ -218,15 +235,17 @@ const IndagineSingola: React.FC<ScreenProps> = ({ setPage }) => {
       setSummary(prev => ({ ...prev, witness }));
 
       // 8. Domanda sulla giustificazione del torto
-      const justificationResponse = await askWithStrictRepeat(`Caro inconscio, hai giustificato il torto ricevuto da ${witness}? Sì o no, attendo risposta.`);
+      const resJust = await askWithStrictRepeat(`Caro inconscio, hai giustificato il torto ricevuto da ${witness}? Sì o no, attendo risposta.`, guard);
+      if (guard.isCancelled()) return;
+      if (resJust === 'NON_RILEVATO') { setStatus('IDLE'); setMessage('Ricerca interrotta.'); return; }
       
-      setSummary(prev => ({ ...prev, justification: justificationResponse === 'SI' ? 'Giustificato' : 'Non Giustificato' }));
+      setSummary(prev => ({ ...prev, justification: resJust === 'SI' ? 'Giustificato' : 'Non Giustificato' }));
 
       // Salvataggio stato completo
       setUserData(prev => ({
         ...prev,
         testimoneChiave: witness,
-        giustificatoTorto: justificationResponse,
+        giustificatoTorto: resJust,
         completedTests: {
           ...prev.completedTests,
           timeLine: true,
@@ -237,8 +256,8 @@ const IndagineSingola: React.FC<ScreenProps> = ({ setPage }) => {
       }));
 
       setStatus('SUCCESS');
-      setMessage(`Indagine completata con successo! Età: ${foundAge} anni; Data: ${foundDate}; Testimone: ${witness}; Torto: ${justificationResponse === 'SI' ? 'Giustificato' : 'Non Giustificato'}.`);
-      await voiceService.speak(`Indagine completata con successo. Testimone identificato: ${witness}. Torto ${justificationResponse === 'SI' ? 'giustificato' : 'non giustificato'}. Puoi consultare l'esito.`);
+      setMessage(`Indagine completata con successo! Età: ${foundAge} anni; Data: ${foundDate}; Testimone: ${witness}; Torto: ${resJust === 'SI' ? 'Giustificato' : 'Non Giustificato'}.`);
+      await voiceService.speak(`Indagine completata con successo. Testimone identificato: ${witness}. Torto ${resJust === 'SI' ? 'giustificato' : 'non giustificato'}. Puoi consultare l'esito.`);
     } catch (error) {
       console.error(error);
       setStatus('ERROR');
@@ -286,15 +305,13 @@ const IndagineSingola: React.FC<ScreenProps> = ({ setPage }) => {
       </div>
 
       <div className="mt-6 flex justify-center gap-3">
-        {(status === 'IDLE' || status === 'ERROR') && (
-          <button
-            onClick={startCalibration}
-            disabled={!isCameraReady}
-            className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 px-8 rounded-xl shadow-lg transition duration-300 disabled:bg-gray-400 uppercase tracking-widest text-sm"
-          >
-            Inizia Calibrazione e Indagine
-          </button>
-        )}
+        <button
+          onClick={startCalibration}
+          disabled={!isCameraReady}
+          className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 px-8 rounded-xl shadow-lg transition duration-300 disabled:bg-gray-400 uppercase tracking-widest text-sm"
+        >
+          Inizia Calibrazione e Indagine
+        </button>
         {(status === 'CALIBRATING' || status === 'TESTING') && (
           <span className="text-indigo-600 font-bold animate-pulse text-base">
             Indagine in corso... Segui la voce guida.

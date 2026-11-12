@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useUser } from '../contexts/UserContext';
 import { useApiKey } from '../contexts/ApiKeyContext';
 import CameraView from '../components/CameraView';
-import { AdvancedVoiceService } from '../services/AdvancedVoiceService';
+import { AdvancedVoiceService, SessionGuard } from '../services/AdvancedVoiceService';
 import TestControls from '../components/TestControls';
 
 interface ScreenProps {
@@ -61,8 +61,10 @@ const TestInduttore: React.FC<ScreenProps> = ({ setPage }) => {
   };
   
   const handleExit = () => {
-    try { voiceService.cancel(); } catch { /* ignore */ }
-    setTimeout(() => setPage(0), 50);
+    if (window.confirm("Sei sicuro di voler uscire? La voce e il test verranno interrotti.")) {
+        try { voiceService.cancel(); } catch { /* ignore */ }
+        setTimeout(() => setPage(0), 50);
+    }
   };
 
   const playInstructions = async () => {
@@ -84,11 +86,15 @@ const TestInduttore: React.FC<ScreenProps> = ({ setPage }) => {
     setStatus('TESTING_DESTRA');
     setResults({ destra: '', sinistra: '' });
     const nome = userData.nome || 'Amico';
+    const guard = new SessionGuard(() => voiceService.cancel());
 
     try {
       setMessage('Test della mano DESTRA in corso...');
       const destraPrompt = `Adesso ${nome}, sfrega il pollice della mano destra con le altre dita della mano per qualche secondo, io rileverò l'oscillazione del tuo corpo.`;
-      const destraResponse = await voiceService.askQuestion(destraPrompt);
+      
+      const destraRes = await voiceService.askQuestionWithSingleRetry(destraPrompt);
+      if (guard.isCancelled()) return;
+      const destraResponse = destraRes.response;
       const destraResultText = destraResponse === 'SI' ? 'Avanti' : destraResponse === 'NO' ? 'Indietro' : 'Non Rilevato';
       setResults(prev => ({ ...prev, destra: destraResultText }));
       
@@ -97,12 +103,15 @@ const TestInduttore: React.FC<ScreenProps> = ({ setPage }) => {
         setStatus('WAITING_CALIBRATION'); 
         return;
       }
-      await new Promise(res => setTimeout(res, 1800));
+      if (!await guard.delay(1800)) return;
 
       setStatus('TESTING_SINISTRA');
       setMessage('Ora test della mano SINISTRA...');
       const sinistraPrompt = "Bene, adesso fai la stessa cosa con la mano sinistra ed io rileverò la tua oscillazione.";
-      const sinistraResponse = await voiceService.askQuestion(sinistraPrompt);
+      
+      const sinistraRes = await voiceService.askQuestionWithSingleRetry(sinistraPrompt);
+      if (guard.isCancelled()) return;
+      const sinistraResponse = sinistraRes.response;
       const sinistraResultText = sinistraResponse === 'SI' ? 'Avanti' : sinistraResponse === 'NO' ? 'Indietro' : 'Non Rilevato';
       setResults(prev => ({ ...prev, destra: destraResultText, sinistra: sinistraResultText }));
 
@@ -167,14 +176,14 @@ const TestInduttore: React.FC<ScreenProps> = ({ setPage }) => {
             Induttore Destro vs Induttore Sinistro — Libertà o Sogno
           </h3>
         </div>
-        <button onClick={handleExit} className="text-xs uppercase tracking-widest font-bold text-cyan-500 hover:text-cyan-400 border border-cyan-900/60 px-3 py-1.5 rounded-lg transition">
+        <button onClick={handleExit} data-keep-voice="true" className="text-xs uppercase tracking-widest font-bold text-cyan-500 hover:text-cyan-400 border border-cyan-900/60 px-3 py-1.5 rounded-lg transition">
           &larr; ESCI / HOME
         </button>
       </div>
 
       <div className="my-6">
          <div className={`relative rounded-2xl overflow-hidden shadow-2xl border-4 ${isProMode ? 'border-gray-800' : 'border-gray-200'} bg-black`}>
-            <CameraView ref={cameraRef} videoRef={videoRef} onReady={handleCameraReady} onCalibrated={handleCalibrated} />
+            <CameraView ref={cameraRef} videoRef={videoRef} onReady={handleCameraReady} onCalibrated={handleCalibrated} showCalibrationButton={false} />
          </div>
       </div>
 

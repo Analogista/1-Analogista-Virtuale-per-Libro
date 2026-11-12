@@ -111,6 +111,11 @@ const CalibrazioneScreen: React.FC<ScreenProps> = ({ setPage }) => {
   };
   
   const handleExit = () => {
+    if (status === 'TESTING') {
+      if (!window.confirm("Sei sicuro di voler uscire? La calibrazione verrà interrotta.")) {
+        return;
+      }
+    }
     voiceService.cancel();
     setPage(0);
   };
@@ -131,7 +136,7 @@ const CalibrazioneScreen: React.FC<ScreenProps> = ({ setPage }) => {
             Zero Assoluto e Soglia di Sensibilità
           </h3>
         </div>
-        <button onClick={handleExit} className="text-xs uppercase tracking-widest font-bold text-cyan-500 hover:text-cyan-400 border border-cyan-900/60 px-3 py-1.5 rounded-lg transition">
+        <button onClick={handleExit} data-keep-voice="true" className="text-xs uppercase tracking-widest font-bold text-cyan-500 hover:text-cyan-400 border border-cyan-900/60 px-3 py-1.5 rounded-lg transition">
           &larr; ESCI / HOME
         </button>
       </div>
@@ -165,6 +170,7 @@ const CalibrazioneScreen: React.FC<ScreenProps> = ({ setPage }) => {
             onCalibrated={handleCalibrated}
             sensitivity={sensitivity}
             onVoiceGuide={playVoiceGuide}
+            showCalibrationButton={false}
           />
         </div>
          

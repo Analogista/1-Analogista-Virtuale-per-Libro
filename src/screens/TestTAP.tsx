@@ -75,8 +75,14 @@ export const TestTAP: React.FC<ScreenProps> = ({ setPage }) => {
   };
 
   const handleExit = () => {
+    const isActive = status === 'CALIBRATING' || status === 'WAITING_INTRO' || status === 'TESTING_SYMBOL';
+    if (isActive) {
+      if (!window.confirm("Sei sicuro di voler uscire? La prova T.A.P. in corso verrà interrotta.")) {
+        return;
+      }
+    }
     try { voiceService.cancel(); } catch { /* ignore */ }
-    setTimeout(() => setPage(0), 50);
+    setPage(0);
   };
 
   const playIntroAndStartTest = async () => {
@@ -196,6 +202,7 @@ export const TestTAP: React.FC<ScreenProps> = ({ setPage }) => {
         </div>
         <button
           onClick={handleExit}
+          data-keep-voice="true"
           className="text-xs uppercase tracking-widest font-bold text-cyan-500 hover:text-cyan-400 border border-cyan-900/60 px-3 py-1.5 rounded-lg transition"
         >
           &larr; ESCI / HOME
@@ -235,7 +242,7 @@ export const TestTAP: React.FC<ScreenProps> = ({ setPage }) => {
       {/* Webcam View con Overlay del Simbolo integrato */}
       <div className="mb-6">
          <div className="relative rounded-2xl overflow-hidden shadow-2xl border-4 border-gray-800 bg-black">
-            <CameraView ref={cameraRef} videoRef={videoRef} showSilhouette={false} onReady={handleCameraReady} onServiceId={setCameraServiceId} onCalibrated={handleCalibrated} />
+            <CameraView ref={cameraRef} videoRef={videoRef} showSilhouette={false} showCalibrationButton={false} onReady={handleCameraReady} onServiceId={setCameraServiceId} onCalibrated={handleCalibrated} />
 
             {/* Header / Badge del simbolo corrente */}
             <div className="absolute top-4 left-4 right-4 flex justify-between items-center pointer-events-none z-30">

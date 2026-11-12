@@ -126,6 +126,37 @@ const Dashboard: React.FC = () => {
   return (
     <div className="space-y-6 animate-fadeIn relative pb-12">
       
+      {/* INTRODUZIONE ALL'ANALOGISTA VIRTUALE */}
+      <div className="bg-white rounded-2xl border-2 border-indigo-200 p-4 sm:p-5 shadow-sm space-y-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <span className="text-3xl flex-shrink-0">🔮</span>
+            <div>
+              <h2 className="font-serif font-black text-base sm:text-xl text-slate-900 tracking-tight">
+                Cos'è l'Analogista Virtuale e come usarlo con il libro
+              </h2>
+              <p className="text-xs sm:text-sm text-indigo-900 font-semibold mt-0.5">
+                Guida interattiva per ascoltare l'inconscio e identificare i blocchi emotivi
+              </p>
+            </div>
+          </div>
+          <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-800 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-200 flex-shrink-0 hidden sm:inline-block">
+            Autoconoscenza
+          </span>
+        </div>
+        <p className="text-xs sm:text-sm text-slate-700 leading-relaxed">
+          L’<strong>Analogista Virtuale</strong> è un assistente pratico basato sulle Discipline Analogiche di Stefano Benemeglio e sviluppato da Max Pisani per il libro <em>Smettila di Soffrire</em>. Rileva attraverso la camera le micro-oscillazioni corpore istintive del soggetto (oscillazione avanti per il SÌ / indietro per il NO) per guidare l'ascolto profondo dell'inconscio in sicurezza.
+        </p>
+        <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 sm:p-3.5 text-xs text-slate-600 leading-relaxed space-y-1.5">
+          <p>
+            <strong>Come usarlo con il libro:</strong> Segui la lettura ed esegui le tre tappe della Consolle qui sotto. La Fotografia Iniziale (T0) misura le dinamiche emotive di partenza; gli Approfondimenti guidano la ricerca di eventi causa; i Check-in periodici misurano i progressi nel tempo.
+          </p>
+          <p className="text-[11px] text-slate-500 italic">
+            Strumento di crescita personale e consapevolezza emotiva; non fornisce diagnosi nè terapie di tipo medico o clinico.
+          </p>
+        </div>
+      </div>
+
       {/* BANNER AUSILIO LIBRO */}
       <div className="bg-gradient-to-r from-amber-50 via-orange-50 to-amber-50 border-2 border-amber-300 rounded-2xl p-4 text-amber-950 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm">
         <div className="flex items-center gap-3">

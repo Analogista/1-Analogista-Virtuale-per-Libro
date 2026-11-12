@@ -3,7 +3,7 @@ import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../contexts/UserContext';
 import CameraView from '../components/CameraView';
-import { AdvancedVoiceService } from '../services/AdvancedVoiceService';
+import { AdvancedVoiceService, SessionGuard } from '../services/AdvancedVoiceService';
 import InfoBox from '../components/InfoBox';
 import VideoAccordion from '../components/VideoAccordion';
 import TestControls from '../components/TestControls';
@@ -65,8 +65,10 @@ const TestNome: React.FC<ScreenProps> = ({ setPage }) => {
   };
 
   const handleExit = () => {
-    voiceService.cancel();
-    setPage(0);
+    if (window.confirm("Sei sicuro di voler uscire? La voce e il test verranno interrotti.")) {
+        voiceService.cancel();
+        setPage(0);
+    }
   };
 
   const generateFakeName = () => {
@@ -93,19 +95,22 @@ const TestNome: React.FC<ScreenProps> = ({ setPage }) => {
     setStatus('TESTING_VERO');
     setResult('');
     const userRealName = userData.nome || 'Amico';
+    const guard = new SessionGuard(() => voiceService.cancel());
     
     try {
       setMessage('Test del tuo nome vero in corso...');
-      const veroResponse = await voiceService.askQuestion(
+      const veroRes = await voiceService.askQuestionWithSingleRetry(
         `Bene, sei in posizione? Fai un bel respiro. Caro inconscio, è vero, sì o no, che il tuo nome è ${userRealName}? Se ti chiami ${userRealName} spingerai il corpo in avanti altrimenti indietro. Attendo risposta.`,
         userRealName
       );
+      if (guard.isCancelled()) return;
+      const veroResponse = veroRes.response;
 
       const newTestNomeData = { ...userData.testNome, nomeVero: veroResponse };
       setUserData(prev => ({ ...prev, testNome: newTestNomeData }));
       setResult(`Risposta al nome vero (${userRealName}): ${veroResponse}.`);
       
-      await new Promise(res => setTimeout(res, 2000));
+      if (!await guard.delay(2000)) return;
 
       setStatus('TESTING_FALSO');
       setMessage('Ora verifichiamo la reazione con un nome falso...');
@@ -113,10 +118,12 @@ const TestNome: React.FC<ScreenProps> = ({ setPage }) => {
       const fakeName = generateFakeName();
       setFakeNameUsed(fakeName);
       
-      const falsoResponse = await voiceService.askQuestion(
+      const falsoRes = await voiceService.askQuestionWithSingleRetry(
         `Adesso proviamo con un nome falso. Caro inconscio, è vero sì o no che il tuo nome è ${fakeName}? Attendo risposta.`,
         fakeName
       );
+      if (guard.isCancelled()) return;
+      const falsoResponse = falsoRes.response;
 
       const finalTestNomeData = { ...newTestNomeData, nomeFalso: falsoResponse };
       setUserData(prev => ({
@@ -140,7 +147,8 @@ const TestNome: React.FC<ScreenProps> = ({ setPage }) => {
         setStatus('DONE');
         await voiceService.speak("Il tuo inconscio non ha confermato il tuo nome reale. Ti consigliamo di ripetere la calibrazione e il test.");
       }
-    } catch {
+    } catch (e) {
+      console.error(e);
       if (status !== 'IDLE') setMessage("Test interrotto.");
     }
   };
@@ -180,6 +188,7 @@ const TestNome: React.FC<ScreenProps> = ({ setPage }) => {
           videoRef={videoRef} 
           onReady={handleCameraReady}
           onCalibrated={handleCalibrated}
+          showCalibrationButton={false}
         />
       </div>
 
