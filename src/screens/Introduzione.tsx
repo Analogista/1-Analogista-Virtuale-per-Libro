@@ -24,33 +24,24 @@ const Introduzione: React.FC<ScreenProps> = ({ setPage }) => {
       <p className="text-gray-700 mb-4">Benvenuto! Questa app è un "Analogista Virtuale". Il suo scopo è aiutarti a scoprire le cause profonde dei tuoi disagi attraverso un dialogo diretto con il tuo inconscio.</p>
 
       <h3 className="text-xl font-bold text-gray-800 mt-6 mb-3">Ecco il percorso che faremo insieme:</h3>
-      <p className="text-gray-700 mb-4">L'app ti guiderà in un dialogo strutturato con la tua parte più profonda. Segui le istruzioni vocali e lascia che il tuo corpo risponda istintivamente. Il nostro viaggio si dividerà in quattro fasi fondamentali:</p>
+      <p className="text-gray-700 mb-4">L'app ti guiderà in un dialogo strutturato con la tua parte più profonda. Segui le istruzioni vocali e lascia che il tuo corpo risponda istintivamente. Il percorso con il libro si articola in tre fasi principali:</p>
 
       <div className="space-y-4 text-gray-700">
         <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-            <h4 className="font-bold text-gray-800">Fase 1: Conoscenza e Calibrazione</h4>
-            <p className="text-sm mt-1">Stabiliremo un canale di comunicazione chiaro. Inserirai i tuoi dati e, con test semplici come il <strong>Test Induttore</strong>, insegneremo all'app a riconoscere il "SÌ" e il "NO" del tuo inconscio. È come accordare uno strumento prima di suonare.</p>
+            <h4 className="font-bold text-gray-800">Fase 1: Fotografia Iniziale (T0)</h4>
+            <p className="text-sm mt-1">Dopo l'inserimento dei tuoi dati e la calibrazione preparatoria della posizione, esplori i cinque test di partenza: <strong>T.A.P.</strong>, <strong>Test Induttore</strong>, <strong>Test del Nome</strong> (con cui si verifica e si stabilisce il codice di risposta "SÌ" e "NO" dell'inconscio), <strong>Test dei Punti Distonici</strong> (sulle 5 aree della vita) e <strong>Test dei Sigilli</strong> (<em>Senso di colpa</em>, <em>Mancanza di autostima</em>, ecc.).</p>
         </div>
         <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-            <h4 className="font-bold text-gray-800">Fase 2: Identificazione del Nodo Emotivo</h4>
-            <p className="text-sm mt-1">Andremo al cuore del problema. Con il <strong>Test dei Punti Distonici</strong>, identificheremo l'area della tua vita che genera disagio (famiglia, autorealizzazione, etc.). Subito dopo, con il <strong>Test dei Sigilli</strong>, scopriremo la paura specifica (<em>Senso di colpa</em>, <em>Disistima</em>, etc.) legata a quel disagio.</p>
+            <h4 className="font-bold text-gray-800">Fase 2: Approfondimenti a scelta libera</h4>
+            <p className="text-sm mt-1">In base a ciò che emerge dalla fotografia iniziale e dalla lettura, puoi esplorare liberamente gli approfondimenti su evento causa e reazione: <strong>Indietro nel Tempo (Grande Indagine)</strong>, <strong>Test Quale Giorno</strong> e <strong>Testimone Chiave & Torto</strong> (con la Time Line per individuare l'età associata all'evento e la reazione di giustificazione o non giustificazione).</p>
         </div>
         <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-            <h4 className="font-bold text-gray-800">Fase 3: Viaggio nel Tempo alla Radice del Problema</h4>
-            <p className="text-sm mt-1">Questa è la fase investigativa. Scoperto il blocco, viaggeremo indietro nel tempo per trovarne la causa, scoprendo:</p>
-            <ul className="list-disc list-inside ml-4 mt-2 text-sm space-y-1">
-                <li><strong>QUANDO</strong> è accaduto l'evento scatenante (l'età esatta).</li>
-                <li><strong>CHI</strong> era il "testimone chiave" coinvolto.</li>
-                <li><strong>IL GIORNO ESATTO</strong> in cui tutto è iniziato.</li>
-            </ul>
-        </div>
-        <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-            <h4 className="font-bold text-gray-800">Fase 4: La Chiave della Tua Reazione</h4>
-            <p className="text-sm mt-1">Faremo la domanda più importante: scopriremo <strong>COME</strong> hai reagito a quell'evento passato, ovvero se hai "giustificato" o "non giustificato" il torto subito. Questa risposta svela la natura profonda del tuo blocco attuale.</p>
+            <h4 className="font-bold text-gray-800">Fase 3: Check-in e nuovo ciclo (in preparazione)</h4>
+            <p className="text-sm mt-1">Prevista dal giorno 15 e accessibile anche dopo il giorno 21 del percorso, per verificare l'evoluzione delle aree distoniche e, se lo desideri, avviare un nuovo ciclo di osservazione personale.</p>
         </div>
       </div>
       
-      <p className="text-gray-700 mt-4 font-semibold">Al termine, avrai una mappa completa delle dinamiche emotive che ti condizionano, pronta per essere analizzata e risolta.</p>
+      <p className="text-gray-700 mt-4 font-semibold">Al termine, avrai una mappa chiara delle dinamiche emotive emerse, da osservare con spirito di autoconoscenza.</p>
       
       <InfoBox className="mt-6 border-indigo-500 bg-indigo-50 text-indigo-900">
         <h3 className="font-bold flex items-center gap-2">

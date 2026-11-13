@@ -28,61 +28,60 @@ const ResultCard: React.FC<{ title: string; children: React.ReactNode }> = ({ ti
 
 // SVG Radar Chart Component
 const SimpleRadarChart: React.FC<{ data: { subject: string; A: number; fullMark: number }[] }> = ({ data }) => {
-    const size = 300; 
-    const center = size / 2;
+    const width = 340;
+    const height = 300;
+    const centerX = width / 2;
+    const centerY = height / 2;
     const radius = 65; 
     const angleStep = (Math.PI * 2) / data.length;
 
     const points = data.map((d, i) => {
         const value = d.A === 100 ? radius : radius * 0.2; 
-        const x = center + value * Math.cos(i * angleStep - Math.PI / 2);
-        const y = center + value * Math.sin(i * angleStep - Math.PI / 2);
+        const x = centerX + value * Math.cos(i * angleStep - Math.PI / 2);
+        const y = centerY + value * Math.sin(i * angleStep - Math.PI / 2);
         return `${x},${y}`;
     }).join(' ');
 
     const axisPoints = data.map((d, i) => {
         const angle = i * angleStep - Math.PI / 2;
-        const x = center + radius * Math.cos(angle);
-        const y = center + radius * Math.sin(angle);
+        const x = centerX + radius * Math.cos(angle);
+        const y = centerY + radius * Math.sin(angle);
         
-        let textX = x;
-        let textY = y;
-        let anchor: "middle" | "start" | "end" = "middle";
-        const labelPadding = 20; 
-
-        if (i === 0) { textY = y - labelPadding; anchor = "middle"; }
-        else if (i === 1) { textX = x + labelPadding; textY = y + 5; anchor = "start"; }
-        else if (i === 2) { textY = y + labelPadding + 5; anchor = "middle"; }
-        else if (i === 3) { textX = x - labelPadding; textY = y + 5; anchor = "end"; }
+        const labelRadius = radius + 16;
+        const textX = centerX + labelRadius * Math.cos(angle);
+        const sinVal = Math.sin(angle);
+        const cosVal = Math.cos(angle);
+        const textY = centerY + labelRadius * sinVal + (sinVal > 0.35 ? 10 : sinVal < -0.35 ? -4 : 4);
+        const anchor: "middle" | "start" | "end" = cosVal > 0.25 ? "start" : cosVal < -0.25 ? "end" : "middle";
 
         return { x, y, label: d.subject.toUpperCase(), textX, textY, anchor };
     });
 
     return (
         <div className="flex justify-center my-4">
-            <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="bg-white rounded-lg shadow-sm border border-gray-100">
-                <circle cx={center} cy={center} r={radius} fill="#f9fafb" stroke="#e5e7eb" strokeWidth="1" />
-                <circle cx={center} cy={center} r={radius * 0.6} fill="none" stroke="#e5e7eb" strokeDasharray="4 4" />
-                <circle cx={center} cy={center} r={radius * 0.2} fill="white" stroke="#e5e7eb" />
+            <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="bg-white rounded-lg shadow-sm border border-gray-100 max-w-full">
+                <circle cx={centerX} cy={centerY} r={radius} fill="#f9fafb" stroke="#e5e7eb" strokeWidth="1" />
+                <circle cx={centerX} cy={centerY} r={radius * 0.6} fill="none" stroke="#e5e7eb" strokeDasharray="4 4" />
+                <circle cx={centerX} cy={centerY} r={radius * 0.2} fill="white" stroke="#e5e7eb" />
                 
                 {axisPoints.map((p, i) => (
-                    <line key={i} x1={center} y1={center} x2={p.x} y2={p.y} stroke="#e5e7eb" />
+                    <line key={i} x1={centerX} y1={centerY} x2={p.x} y2={p.y} stroke="#e5e7eb" />
                 ))}
 
                 <polygon points={points} fill="rgba(37, 99, 235, 0.4)" stroke="#2563eb" strokeWidth="2" strokeLinejoin="round" />
                 
                  {data.map((d, i) => {
                     const value = d.A === 100 ? radius : radius * 0.2;
-                    const x = center + value * Math.cos(i * angleStep - Math.PI / 2);
-                    const y = center + value * Math.sin(i * angleStep - Math.PI / 2);
+                    const x = centerX + value * Math.cos(i * angleStep - Math.PI / 2);
+                    const y = centerY + value * Math.sin(i * angleStep - Math.PI / 2);
                     return <circle key={i} cx={x} cy={y} r="3" fill="#2563eb" />
                 })}
 
                 {axisPoints.map((p, i) => (
-                    <text key={i} x={p.textX} y={p.textY} textAnchor={p.anchor} className="text-[11px] fill-gray-800 font-bold tracking-wider">{p.label}</text>
+                    <text key={i} x={p.textX} y={p.textY} textAnchor={p.anchor} className="text-[10px] fill-gray-800 font-bold tracking-wider">{p.label}</text>
                 ))}
                 
-                <text x={center} y={size - 15} textAnchor="middle" className="text-[10px] fill-gray-400 italic">Forma ampia = Benessere / Forma contratta = Disagio</text>
+                <text x={centerX} y={height - 12} textAnchor="middle" className="text-[10px] fill-gray-400 italic">Forma ampia = Benessere / Forma contratta = Disagio</text>
             </svg>
         </div>
     );
@@ -145,11 +144,23 @@ const Risultati: React.FC<ScreenProps> = ({ setPage }) => {
   };
 
   const radarData = [
-    { subject: 'Famiglia', A: userData.puntiDistonici.famiglia === 'SI' ? 100 : 20, fullMark: 100 },
-    { subject: 'Sentimenti', A: userData.puntiDistonici.sentimentali === 'SI' ? 100 : 20, fullMark: 100 },
-    { subject: 'Sesso', A: userData.puntiDistonici.sessuali === 'SI' ? 100 : 20, fullMark: 100 },
-    { subject: 'Lavoro', A: userData.puntiDistonici.autorealizzazione === 'SI' ? 100 : 20, fullMark: 100 },
+    { subject: 'Fam. Origine', A: userData.puntiDistonici?.famiglia === 'SI' ? 100 : 20, fullMark: 100 },
+    { subject: 'Fam. Acquisita', A: userData.puntiDistonici?.famigliaAcquisita === 'SI' ? 100 : 20, fullMark: 100 },
+    { subject: 'Sentimenti', A: userData.puntiDistonici?.sentimentali === 'SI' ? 100 : 20, fullMark: 100 },
+    { subject: 'Passioni', A: userData.puntiDistonici?.sessuali === 'SI' ? 100 : 20, fullMark: 100 },
+    { subject: 'Lavoro', A: userData.puntiDistonici?.autorealizzazione === 'SI' ? 100 : 20, fullMark: 100 },
   ];
+
+  const sigilliMeta: { key: keyof NonNullable<typeof userData.sigilli>; label: string }[] = [
+    { key: 'colpa', label: 'Sensi di colpa' },
+    { key: 'abbandono', label: "Paura dell'abbandono" },
+    { key: 'giudizio', label: 'Timore del giudizio degli altri' },
+    { key: 'disistima', label: 'Mancanza di autostima' },
+  ];
+
+  const emergedSigilli = sigilliMeta
+    .filter(item => userData.sigilli?.[item.key] === 'SI')
+    .map(item => item.label);
 
   // Funzione avanzata per pulire il testo per la lettura vocale
   const stripMarkdown = (text: string) => {
@@ -301,10 +312,12 @@ const Risultati: React.FC<ScreenProps> = ({ setPage }) => {
             DATI UTENTE:
             - Nome: ${userData.nome}
             - Induttore: ${userData.induttoreResult}
-            - Sigillo Rilevato: ${userData.sigilloFinale}
-            - Punto Distonico: ${userData.puntoDistonicoFinale}
+            - Sigillo su cui lavorare (prioritario): ${userData.sigilloFinale || 'Nessuno identificato'}
+            - Sigilli emersi (SÌ): ${emergedSigilli.length > 0 ? emergedSigilli.join(', ') : 'Nessuno'}
+            - Punto Distonico: ${userData.puntoDistonicoFinale || 'Nessuno identificato'}
             - Evento Causa: ${userData.timeLine.etaEventoCausa} anni (Testimone: ${userData.testimoneChiave}).
-            - Reazione al Torto: ${userData.giustificatoTorto} (SI=Dissociazione, NO=Scissione).
+            - Reazione al Torto (hai giustificato): ${userData.giustificatoTorto} (SI = Ha accettato il giudizio senza dire la propria. Meccanismo: DISSOCIAZIONE; NO = Ha reagito, la colpa è rimasta all'esterno. Meccanismo: SCISSIONE).
+            - Avresti dovuto giustificare: ${userData.avreiDovutoGiustificare || 'Non rilevato'}.
             
             ${chatContext}
             
@@ -342,9 +355,27 @@ const Risultati: React.FC<ScreenProps> = ({ setPage }) => {
   }
 
   const getReazioneDetailedText = () => {
-      if (userData.giustificatoTorto === 'SI') return "Hai GIUSTIFICATO (Sì). Meccanismo: DISSOCIAZIONE (Conflitto contro te stesso).";
-      if (userData.giustificatoTorto === 'NO') return "NON hai GIUSTIFICATO (No). Meccanismo: SCISSIONE (Rabbia verso l'esterno).";
+      if (userData.giustificatoTorto === 'SI') return "Ha accettato il giudizio senza dire la propria. Meccanismo: DISSOCIAZIONE.";
+      if (userData.giustificatoTorto === 'NO') return "Ha reagito, la colpa è rimasta all'esterno. Meccanismo: SCISSIONE.";
       return "Dato non rilevato.";
+  };
+
+  const getCoherenceText = () => {
+      const g = userData.giustificatoTorto;
+      const d = userData.avreiDovutoGiustificare;
+      if ((g === 'SI' || g === 'NO') && (d === 'SI' || d === 'NO')) {
+          return g === d
+              ? "Risposta coerente."
+              : "Secondo il modello DAB, la discordanza tra le due risposte indica un possibile conflitto: è un'ipotesi da osservare, non una prova.";
+      }
+      return "";
+  };
+
+  const formatAnswerLabel = (val?: string) => {
+      if (val === 'SI') return 'SÌ';
+      if (val === 'NO') return 'NO';
+      if (val === 'NON_RILEVATO') return 'Non rilevato';
+      return 'Non rilevato';
   };
 
   const handleGeneratePDF = () => {
@@ -370,11 +401,28 @@ const Risultati: React.FC<ScreenProps> = ({ setPage }) => {
           y += (lines.length * 6) + 4;
       };
 
+      let pdfDisistimaAliasUsed = false;
+      const formatFirstDisistima = (text: string) => {
+          if (!text || pdfDisistimaAliasUsed) return text;
+          const regex = /mancanza di autostima/i;
+          if (regex.test(text)) {
+              pdfDisistimaAliasUsed = true;
+              return text.replace(regex, (m) => `${m} (disistima)`);
+          }
+          return text;
+      };
+
       addLine(`INDUTTORE: ${userData.induttoreResult} (${userData.induttoreResult === 'Destro' ? 'Grillo/Istituzionale' : 'Lucignolo/Trasgressivo'})`);
-      addLine(`PUNTO DISTONICO: ${userData.puntoDistonicoFinale}`);
-      addLine(`SIGILLO: ${userData.sigilloFinale}`);
+      addLine(`PUNTO DISTONICO: ${userData.puntoDistonicoFinale || 'Nessuno identificato'}`);
+      addLine(`SIGILLO SU CUI LAVORARE: ${formatFirstDisistima(userData.sigilloFinale || 'Nessuno identificato')}`);
+      addLine(`SIGILLI EMERSI (SÌ): ${emergedSigilli.length > 0 ? emergedSigilli.map(formatFirstDisistima).join(', ') : 'Nessun sigillo attivo rilevato'}`);
       addLine(`TIME LINE: Evento a ${userData.timeLine.etaEventoCausa} anni con ${userData.testimoneChiave}`);
-      addLine(`REAZIONE: ${userData.giustificatoTorto} (${userData.giustificatoTorto === 'SI' ? 'Giustificato/Dissociazione' : 'Non Giustificato/Scissione'})`);
+      addLine(`REAZIONE (Hai giustificato): ${userData.giustificatoTorto === 'SI' ? 'SÌ — Ha accettato il giudizio senza dire la propria. Meccanismo: DISSOCIAZIONE.' : userData.giustificatoTorto === 'NO' ? "NO — Ha reagito, la colpa è rimasta all'esterno. Meccanismo: SCISSIONE." : 'Dato non rilevato.'}`);
+      addLine(`AVRESTI DOVUTO GIUSTIFICARE: ${formatAnswerLabel(userData.avreiDovutoGiustificare)}`);
+      const pdfCoherence = getCoherenceText();
+      if (pdfCoherence) {
+          addLine(`COERENZA RISPOSTE TORTO: ${pdfCoherence}`);
+      }
       
       if (aiMetaphor) {
           y += 5;
@@ -392,15 +440,40 @@ const Risultati: React.FC<ScreenProps> = ({ setPage }) => {
       doc.save(`Report_${userData.nome}.pdf`);
   };
 
+  const appendDisistimaOnce = (text: string, alreadyUsed: boolean): { value: string; used: boolean } => {
+    if (!text || alreadyUsed) return { value: text, used: alreadyUsed };
+    const regex = /mancanza di autostima/i;
+    if (regex.test(text)) {
+      return { value: text.replace(regex, (m) => `${m} (disistima)`), used: true };
+    }
+    return { value: text, used: false };
+  };
+
+  const hasFullCrossAnalysis = Boolean(userData.puntoDistonicoFinale && userData.sigilloFinale);
+  const crossAnalysis = hasFullCrossAnalysis ? generateAnalogicalAnalysis(userData) : null;
+  const sintesiPass = crossAnalysis
+    ? appendDisistimaOnce(crossAnalysis.sintesiCompleta, false)
+    : { value: '', used: false };
+  const sigilloDifesaPass = crossAnalysis
+    ? appendDisistimaOnce(crossAnalysis.sigilloDifesa, sintesiPass.used)
+    : { value: '', used: false };
+  const sigilloFinalePass = appendDisistimaOnce(
+    userData.sigilloFinale || 'Nessuno identificato',
+    sigilloDifesaPass.used
+  );
+  const emergedSigilliFormatted = emergedSigilli.reduce<{ items: string[]; used: boolean }>(
+    (acc, label) => {
+      const next = appendDisistimaOnce(label, acc.used);
+      return { items: [...acc.items, next.value], used: next.used };
+    },
+    { items: [], used: sigilloFinalePass.used }
+  ).items;
+
   // --- LOGICA DI INCROCIO DATI (RIASSUMENDO CON ANALYSIS ENGINE) ---
   const renderSummary = () => {
-         const { puntoDistonicoFinale, sigilloFinale } = userData;
-         
-         if (!puntoDistonicoFinale || !sigilloFinale) {
+         if (!crossAnalysis) {
              return <p className="text-indigo-800 text-sm italic">Completa tutti i test precedenti (Punti Distonici e Sigilli) per visualizzare il riepilogo incrociato.</p>;
          }
-
-         const analysis = generateAnalogicalAnalysis(userData);
 
          return (
             <div className="text-indigo-900 text-sm space-y-4 leading-relaxed text-justify">
@@ -408,7 +481,7 @@ const Risultati: React.FC<ScreenProps> = ({ setPage }) => {
                   <p className="font-bold text-indigo-950 flex items-center gap-1.5 mb-1">
                     <span>📌</span> Sintesi Inconscia Integrata
                   </p>
-                  <p className="text-indigo-900 whitespace-pre-line text-sm leading-relaxed">{analysis.sintesiCompleta}</p>
+                  <p className="text-indigo-900 whitespace-pre-line text-sm leading-relaxed">{sintesiPass.value}</p>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -416,25 +489,25 @@ const Risultati: React.FC<ScreenProps> = ({ setPage }) => {
                     <p className="font-bold text-xs uppercase tracking-wide text-indigo-700 mb-1 flex items-center gap-1">
                       <span>🎭</span> Fase & Induttore
                     </p>
-                    <p className="text-xs text-slate-700 leading-relaxed">{analysis.faseInconscia}</p>
+                    <p className="text-xs text-slate-700 leading-relaxed">{crossAnalysis.faseInconscia}</p>
                   </div>
                   <div className="p-3 bg-white rounded-xl border border-indigo-100 shadow-sm">
                     <p className="font-bold text-xs uppercase tracking-wide text-indigo-700 mb-1 flex items-center gap-1">
                       <span>⚡</span> Area di Conflitto
                     </p>
-                    <p className="text-xs text-slate-700 leading-relaxed">{analysis.areaConflitto}</p>
+                    <p className="text-xs text-slate-700 leading-relaxed">{crossAnalysis.areaConflitto}</p>
                   </div>
                   <div className="p-3 bg-white rounded-xl border border-indigo-100 shadow-sm">
                     <p className="font-bold text-xs uppercase tracking-wide text-indigo-700 mb-1 flex items-center gap-1">
                       <span>🛡️</span> Sigillo Difensivo
                     </p>
-                    <p className="text-xs text-slate-700 leading-relaxed">{analysis.sigilloDifesa}</p>
+                    <p className="text-xs text-slate-700 leading-relaxed">{sigilloDifesaPass.value}</p>
                   </div>
                   <div className="p-3 bg-white rounded-xl border border-indigo-100 shadow-sm">
                     <p className="font-bold text-xs uppercase tracking-wide text-indigo-700 mb-1 flex items-center gap-1">
                       <span>🔄</span> Reazione & Meccanismo
                     </p>
-                    <p className="text-xs text-slate-700 leading-relaxed">{analysis.meccanismoReattivo}</p>
+                    <p className="text-xs text-slate-700 leading-relaxed">{crossAnalysis.meccanismoReattivo}</p>
                   </div>
                 </div>
 
@@ -442,7 +515,7 @@ const Risultati: React.FC<ScreenProps> = ({ setPage }) => {
                   <p className="font-bold text-xs uppercase tracking-wide text-amber-800 mb-1 flex items-center gap-1">
                     <span>💡</span> Consiglio Analogico Riconciliativo (Gratuito)
                   </p>
-                  <p className="text-xs text-amber-900 leading-relaxed">{analysis.consiglioAnalogico}</p>
+                  <p className="text-xs text-amber-900 leading-relaxed">{crossAnalysis.consiglioAnalogico}</p>
                 </div>
             </div>
          );
@@ -582,17 +655,32 @@ const Risultati: React.FC<ScreenProps> = ({ setPage }) => {
         </ResultCard>
 
         <ResultCard title="🎯 Punto Distonico">
-            <p className="text-center font-semibold text-blue-700 mb-2">{userData.puntoDistonicoFinale}</p>
+            <p className="text-center font-semibold text-blue-700 mb-2">{userData.puntoDistonicoFinale || 'Nessuno identificato'}</p>
             <SimpleRadarChart data={radarData} />
         </ResultCard>
 
         <ResultCard title="🔐 Sigillo-Vincolo">
-            <p className="font-semibold text-blue-700">{userData.sigilloFinale}</p>
+            <p className="font-semibold text-blue-700">
+              <span className="text-gray-700 font-bold">Sigillo su cui lavorare: </span>
+              {sigilloFinalePass.value}
+            </p>
+            <div className="mt-3 pt-2 border-t border-gray-100">
+              <p className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5">Tutti i sigilli emersi (risposta SÌ):</p>
+              {emergedSigilliFormatted.length > 0 ? (
+                <ul className="list-disc list-inside space-y-0.5 text-gray-800">
+                  {emergedSigilliFormatted.map((label, idx) => (
+                    <li key={idx}>{label}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-xs text-gray-500 italic">Nessun sigillo con risposta SÌ registrato.</p>
+              )}
+            </div>
         </ResultCard>
 
         <div className="md:col-span-2">
             <ResultCard title="⏳ Time Line">
-                <p><strong>Diagnosi:</strong> {userData.timeLine.diagnosi}</p>
+                <p><strong>Lettura Temporale:</strong> {userData.timeLine.diagnosi}</p>
                 {userData.timeLine.PU && (
                      <TimeLineGraph 
                         age={parseInt(userData.eta)} 
@@ -607,9 +695,23 @@ const Risultati: React.FC<ScreenProps> = ({ setPage }) => {
 
         <div className="md:col-span-2">
             <ResultCard title="📅 Giorno e Reazione">
-                 <p><strong>Testimone:</strong> {userData.testimoneChiave}</p>
-                 <p className="mt-1"><strong>Reazione:</strong> <span className={userData.giustificatoTorto === 'SI' ? 'text-orange-600 font-bold' : 'text-red-600 font-bold'}>{userData.giustificatoTorto === 'SI' ? 'GIUSTIFICATO' : 'NON GIUSTIFICATO'}</span></p>
-                 <p className="text-xs text-gray-500 mt-2 mb-2 italic">"{getReazioneDetailedText()}"</p>
+                 <p><strong>Testimone:</strong> {userData.testimoneChiave || 'Non rilevato'}</p>
+                 <p className="mt-1">
+                   <strong>Hai giustificato il torto:</strong>{' '}
+                   <span className={userData.giustificatoTorto === 'SI' ? 'text-orange-600 font-bold' : userData.giustificatoTorto === 'NO' ? 'text-red-600 font-bold' : 'text-gray-600 font-semibold'}>
+                     {userData.giustificatoTorto === 'SI' ? 'GIUSTIFICATO (SÌ)' : userData.giustificatoTorto === 'NO' ? 'NON GIUSTIFICATO (NO)' : 'Non rilevato'}
+                   </span>
+                 </p>
+                 <p className="text-xs text-gray-600 mt-1 italic">"{getReazioneDetailedText()}"</p>
+                 <p className="mt-2">
+                   <strong>Avresti dovuto giustificare:</strong>{' '}
+                   <span className="font-semibold text-gray-800">{formatAnswerLabel(userData.avreiDovutoGiustificare)}</span>
+                 </p>
+                 {getCoherenceText() && (
+                   <p className="mt-2 p-2.5 rounded-lg bg-slate-100 border border-slate-200 text-xs text-slate-800 font-medium">
+                     {getCoherenceText()}
+                   </p>
+                 )}
             </ResultCard>
         </div>
       </div>

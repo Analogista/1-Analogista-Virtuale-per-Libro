@@ -50,7 +50,7 @@ const ChatBot: React.FC = () => {
 
         **Descrizione dei Test Principali:**
         - **Test Induttore:** Serve a capire la "fase" dell'utente (Istituzionale o Trasgressiva).
-        - **Test Punti Distonici:** Identifica l'area di vita che causa disagio (famiglia, autorealizzazione, sentimenti, sesso).
+        - **Test Punti Distonici:** Identifica l'area di vita che causa disagio (famiglia d'origine, famiglia acquisita, relazioni sentimentali e affettive, relazioni passionali e sessuali, autorealizzazione hobby e lavoro).
         - **Test Sigilli-Vincoli:** Scopre il blocco emotivo specifico legato al punto distonico.
         - **Time Line, Testimone Chiave, Quale Giorno:** Sono test investigativi per trovare QUANDO, con CHI e in CHE GIORNO è avvenuto l'evento che ha causato il sigillo.
         - **Reazione al Torto:** L'ultimo test scopre se l'utente ha "giustificato" o "non giustificato" il torto.

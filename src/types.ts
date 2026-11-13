@@ -39,6 +39,7 @@ export interface UserData {
   };
   puntiDistonici: {
     famiglia: 'SI' | 'NO' | 'NON_RILEVATO' | '';
+    famigliaAcquisita: 'SI' | 'NO' | 'NON_RILEVATO' | '';
     sentimentali: 'SI' | 'NO' | 'NON_RILEVATO' | '';
     sessuali: 'SI' | 'NO' | 'NON_RILEVATO' | '';
     autorealizzazione: 'SI' | 'NO' | 'NON_RILEVATO' | '';
@@ -65,6 +66,7 @@ export interface UserData {
   testimoneChiave: string;
   giornoEvento: string;
   giustificatoTorto: 'SI' | 'NO' | 'NON_RILEVATO' | '';
+  avreiDovutoGiustificare?: 'SI' | 'NO' | 'NON_RILEVATO' | '';
   completedTests?: {
       [key: string]: boolean;
       chiSei?: boolean;

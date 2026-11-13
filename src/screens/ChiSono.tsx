@@ -33,16 +33,16 @@ const ChiSono: React.FC<ScreenProps> = ({ setPage }) => {
             />
         </div>
 
-        <p>La mia missione è guidare le persone in un viaggio di scoperta interiore, aiutandole a dialogare con il proprio inconscio, o istanza emotiva, per svelare e superare i blocchi emotivi che limitano il benessere e la felicità.</p>
+        <p>La mia missione è accompagnare le persone in un percorso di esplorazione interiore e ascolto delle proprie dinamiche emotive secondo le Discipline Analogiche.</p>
         
-        <p>Devi sapere che la tecnica che sperimenterai è la stessa che tanti anni fa mi ha salvato dal baratro grazie al Dott. S.Benemeglio. Da allora l'ho appresa e la utilizzo per aiutare chi si rivolge a me, anche in videocall. E' una tecnica che non ha controindicazioni e risolve velocemente.</p>
+        <p>La tecnica analogica presentata in questa app nasce dagli studi di Stefano Benemeglio ed è lo strumento di autoconoscenza che applico anche nei miei percorsi individuali e nelle sessioni online per favorire consapevolezza emotiva e crescita personale.</p>
         
-        <p>Sulla mia pagina ufficiale di facebook <strong>"PACommunication Brindisi"</strong>, troverai tante testimonianze/recensioni di chi si è rivolto a me.</p>
+        <p>Sulla mia pagina ufficiale di facebook <strong>"PACommunication Brindisi"</strong>, troverai esperienze e testimonianze di chi ha scelto di intraprendere questo percorso.</p>
       </div>
       
       <InfoBox className="mt-6">
         <h3 className="font-bold mb-2">La mia filosofia</h3>
-        <p>Credo fermamente che ogni individuo possieda le risorse interiori per risolvere i propri disagi. Il mio ruolo è quello di essere un "traduttore" del linguaggio emotivo, fornendo gli strumenti per accedere a queste risorse e promuovere un cambiamento profondo e duraturo.</p>
+        <p>Credo che ogni persona possa imparare a leggere meglio il proprio linguaggio emotivo. Il mio ruolo è offrire una guida chiara per osservare le reazioni istintive e sviluppare maggiore consapevolezza delle proprie scelte.</p>
       </InfoBox>
 
       <div className="mt-8 text-right">

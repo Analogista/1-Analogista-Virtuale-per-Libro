@@ -14,8 +14,9 @@ interface ScreenProps {
 
 const puntiMapping = {
   famiglia: "rapporti con la famiglia d'origine",
+  famigliaAcquisita: "rapporti con la famiglia acquisita",
   sentimentali: "rapporti sentimentali e affettivi",
-  sessuali: "rapporti sessuali e passionali",
+  sessuali: "rapporti passionali e sessuali",
   autorealizzazione: "autorealizzazione, hobby e lavoro"
 };
 type PuntoKey = keyof typeof puntiMapping;
@@ -33,9 +34,13 @@ const TestPuntiDistonici: React.FC<ScreenProps> = ({ setPage }) => {
   const cameraRef = useRef<any>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const voiceService = useMemo(() => new AdvancedVoiceService(), []);
+  const guardRef = useRef<SessionGuard | null>(null);
 
   useEffect(() => {
-    return () => voiceService.cancel();
+    return () => {
+      guardRef.current?.cancel();
+      voiceService.cancel();
+    };
   }, [voiceService]);
 
   const handleCameraReady = () => {
@@ -62,6 +67,7 @@ const TestPuntiDistonici: React.FC<ScreenProps> = ({ setPage }) => {
   };
 
   const handleRepeat = () => {
+    guardRef.current?.cancel();
     voiceService.cancel();
     setStatus('IDLE');
     setIsCalibrated(false);
@@ -72,6 +78,7 @@ const TestPuntiDistonici: React.FC<ScreenProps> = ({ setPage }) => {
 
   const handleExit = () => {
     if (window.confirm("Sei sicuro di voler uscire? La voce e il test verranno interrotti.")) {
+        guardRef.current?.cancel();
         voiceService.cancel();
         setPage(0);
     }
@@ -97,9 +104,12 @@ const TestPuntiDistonici: React.FC<ScreenProps> = ({ setPage }) => {
     const currentPuntiDistonici: Record<string, string> = {};
     const nome = userData.nome ? userData.nome : 'Amico';
 
+    guardRef.current?.cancel();
     const guard = new SessionGuard(() => voiceService.cancel());
+    guardRef.current = guard;
     try {
-      await voiceService.speak(`Caro inconscio di ${nome}, adesso verifichiamo le 4 aree fondamentali della tua vita per individuare eventuali punti distonici.`);
+      await voiceService.speak(`Caro inconscio di ${nome}, adesso verifichiamo le 5 aree fondamentali della tua vita per individuare eventuali punti distonici.`);
+      if (guard.isCancelled()) return;
 
       for (const punto of Object.keys(puntiMapping) as PuntoKey[]) {
         setMessage(`Indagine in corso: ${puntiMapping[punto]}...`);
@@ -107,7 +117,7 @@ const TestPuntiDistonici: React.FC<ScreenProps> = ({ setPage }) => {
         const res = await voiceService.askQuestionWithSingleRetry(text);
         if (guard.isCancelled()) return;
 
-        setResults(prev => ({ ...prev, [punto]: res.response }));
+        setResults(prev => ({ ...prev, [punto]: res.response || 'NON_RILEVATO' }));
         currentPuntiDistonici[punto] = res.response || 'NON_RILEVATO';
         if (!await guard.delay(1200)) return;
       }
@@ -121,7 +131,7 @@ const TestPuntiDistonici: React.FC<ScreenProps> = ({ setPage }) => {
       const nonSoddisfatti = (Object.keys(currentPuntiDistonici) as PuntoKey[]).filter(k => currentPuntiDistonici[k] === 'NO');
 
       if (nonSoddisfatti.length === 0) {
-        await completeTest('Nessun punto distonico', 'Ottimo! Nessun punto distonico rilevato: tutte e 4 le aree risultano in equilibrio.');
+        await completeTest('Nessun punto distonico', 'Ottimo! Nessun punto distonico rilevato: tutte e 5 le aree risultano in equilibrio.');
       } else if (nonSoddisfatti.length === 1) {
         const unicoPunto = puntiMapping[nonSoddisfatti[0]];
         await completeTest(unicoPunto, `Punto distonico identificato: ${unicoPunto}.`);
@@ -130,6 +140,7 @@ const TestPuntiDistonici: React.FC<ScreenProps> = ({ setPage }) => {
         setStatus('SELECTING');
         setMessage('Sono emersi più punti distonici. Identifichiamo quello prioritario...');
         await voiceService.speak("Sono emerse più aree distoniche. Ora determiniamo quale desideri risolvere prima.");
+        if (guard.isCancelled()) return;
 
         let identifiedPunto = '';
         for (const punto of nonSoddisfatti) {
@@ -144,14 +155,26 @@ const TestPuntiDistonici: React.FC<ScreenProps> = ({ setPage }) => {
         }
 
         if (!identifiedPunto) {
-          identifiedPunto = puntiMapping[nonSoddisfatti[0]];
+          const noPriorityMsg = 'Nessun punto distonico prioritario identificato. Puoi ripetere il test in un altro momento.';
+          setSelectedPunto('');
+          setMessage(noPriorityMsg);
+          setStatus('SUCCESS');
+          setUserData(prev => ({
+            ...prev,
+            puntoDistonicoFinale: '',
+            completedTests: { ...prev.completedTests, puntiDistonici: true }
+          }));
+          try {
+            await voiceService.speak(noPriorityMsg);
+          } catch { /* ignore */ }
+          return;
         }
 
         await completeTest(identifiedPunto, `Punto distonico prioritario: ${identifiedPunto}.`);
       }
     } catch (error) {
       console.error(error);
-      if (status !== 'IDLE') setMessage("Test interrotto. Clicca su Riprova per ricominciare.");
+      if (!guard.isCancelled()) setMessage("Test interrotto. Clicca su Riprova per ricominciare.");
     }
   };
 
@@ -164,10 +187,11 @@ const TestPuntiDistonici: React.FC<ScreenProps> = ({ setPage }) => {
             Test Standalone
           </span>
           <h2 className="text-2xl font-serif font-black text-gray-900">Test Punti Distonici</h2>
-          <h3 className="text-sm font-medium text-gray-600">Aree della Vita: famiglia, sentimenti, passioni, realizzazione</h3>
+          <h3 className="text-sm font-medium text-gray-600">Le 5 Aree della Vita: famiglia d'origine, famiglia acquisita, sentimenti, passioni, realizzazione</h3>
         </div>
         <button
           onClick={handleExit}
+          data-keep-voice="true"
           className="text-xs uppercase tracking-widest font-bold text-gray-500 hover:text-blue-600 border border-gray-200 px-3 py-1.5 rounded-lg transition"
         >
           &larr; Torna alla Home
@@ -178,7 +202,7 @@ const TestPuntiDistonici: React.FC<ScreenProps> = ({ setPage }) => {
 
       <InfoBox>
         <p>
-          Posizionati in piedi di fronte alla webcam con il busto centrato. Il test indaga in modo indipendente le aree fondamentali della tua vita (famiglia, affetti, passioni, autorealizzazione) per individuare dove si annidano i disagi emotivi.
+          Posizionati in piedi di fronte alla webcam con il busto centrato. Il test indaga in modo indipendente le 5 aree fondamentali della tua vita (famiglia d'origine, famiglia acquisita, relazioni sentimentali e affettive, relazioni passionali e sessuali, autorealizzazione hobby e lavoro) per individuare dove si annidano i disagi emotivi.
         </p>
       </InfoBox>
 
@@ -217,7 +241,7 @@ const TestPuntiDistonici: React.FC<ScreenProps> = ({ setPage }) => {
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
             <span className="text-blue-800 font-bold text-sm">
-              {status === 'TESTING' ? 'Test delle aree della vita in corso...' : 'Scelta dell\'area prioritaria...'}
+              {status === 'TESTING' ? 'Test delle 5 aree in corso...' : 'Scelta dell\'area prioritaria...'}
             </span>
           </div>
         )}
@@ -268,12 +292,14 @@ const TestPuntiDistonici: React.FC<ScreenProps> = ({ setPage }) => {
           <div className="bg-white/80 backdrop-blur rounded-xl p-4 border border-emerald-200 my-3">
             <p className="text-xs font-bold uppercase tracking-wider text-emerald-800 mb-1">Punto Distonico Prioritario:</p>
             <p className="text-lg font-serif font-bold text-emerald-900">
-              {selectedPunto || 'Nessun punto distonico rilevato'}
+              {selectedPunto || 'Nessun punto distonico prioritario identificato'}
             </p>
             <p className="text-xs text-slate-600 mt-1">
-              {selectedPunto && selectedPunto !== 'Nessun punto distonico'
+              {selectedPunto === 'Nessun punto distonico'
+                ? 'Tutte le 5 aree di vita analizzate risultano in equilibrio analogico.'
+                : selectedPunto
                 ? `L'inconscio segnala che i blocchi emotivi attuali si riflettono principalmente su: ${selectedPunto}.`
-                : 'Tutte le aree di vita analizzate risultano in equilibrio analogico.'}
+                : 'Nessun punto distonico prioritario identificato. Puoi ripetere il test in un altro momento.'}
             </p>
           </div>
 

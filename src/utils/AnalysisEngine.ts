@@ -42,14 +42,16 @@ export function generateAnalogicalAnalysis(userData: UserData): AnalysisSummary 
   // 2. Area di Conflitto (Punto Distonico)
   let areaConflitto: string;
   const distonicoUpper = (puntoDistonicoFinale || '').toUpperCase();
-  if (distonicoUpper.includes('FAMIGLIA')) {
-    areaConflitto = "Sfera Familiare: la tensione analogica si concentra sulle figure genitoriali o su risentimenti ed imprinting legati al nucleo d'origine.";
-  } else if (distonicoUpper.includes('SENTIMENTALI') || distonicoUpper.includes('AFFETTIVA')) {
-    areaConflitto = "Sfera Sentimentale: la distonia emerge nella relazione di coppia, con timore della vulnerabilità o dinamiche di insicurezza affettiva.";
-  } else if (distonicoUpper.includes('SESSUALI')) {
-    areaConflitto = "Sfera Sessuale/Intima: blocchi nella spontaneità o nella gestione dell'energia vitale e pulsionale.";
+  if (distonicoUpper.includes('ACQUISITA')) {
+    areaConflitto = "Sfera Famiglia Acquisita: la tensione analogica si concentra sulle dinamiche del nucleo familiare acquisito (partner, figli o relazioni familiari attuali).";
+  } else if (distonicoUpper.includes('FAMIGLIA')) {
+    areaConflitto = "Sfera Famiglia d'Origine: la tensione analogica si concentra sulle figure genitoriali o su risentimenti ed imprinting legati al nucleo d'origine.";
+  } else if (distonicoUpper.includes('SENTIMENTALI') || distonicoUpper.includes('AFFETTIV')) {
+    areaConflitto = "Sfera Relazioni Sentimentali e Affettive: la distonia emerge nella relazione affettiva, con timore della vulnerabilità o dinamiche di insicurezza.";
+  } else if (distonicoUpper.includes('SESSUALI') || distonicoUpper.includes('PASSIONALI')) {
+    areaConflitto = "Sfera Relazioni Passionali e Sessuali: blocchi nella spontaneità o nella gestione dell'energia vitale e passionale.";
   } else if (distonicoUpper.includes('AUTOREALIZZAZIONE')) {
-    areaConflitto = "Sfera dell'Autorealizzazione: ostacoli o frustrazioni percepiti nella sfera professionale, nel valore personale o nei progetti di vita.";
+    areaConflitto = "Sfera dell'Autorealizzazione, Hobby e Lavoro: ostacoli o frustrazioni percepiti nella sfera professionale, nei progetti o nel tempo personale.";
   } else {
     areaConflitto = puntoDistonicoFinale ? `Area ${puntoDistonicoFinale}` : "Area non specificata";
   }
@@ -61,8 +63,8 @@ export function generateAnalogicalAnalysis(userData: UserData): AnalysisSummary 
     sigilloDifesa = "Sigillo della Colpa: l'inconscio auto-punisce la propria spinta ed il proprio merito, generando la sensazione sotterranea di sbagliare o di non meritare il pieno appagamento.";
   } else if (sigilloUpper.includes('ABBANDONO')) {
     sigilloDifesa = "Sigillo dell'Abbandono: meccanismo difensivo radicato nella paura di rimanere soli o scartati, spingendo all'iper-adattamento pur di mantenere il legame.";
-  } else if (sigilloUpper.includes('DISISTIMA')) {
-    sigilloDifesa = "Sigillo della Disistima: svalutazione preventiva di sé, tendenza ad accentuare i propri difetti o incapacità ed a sminuire le proprie risorse.";
+  } else if (sigilloUpper.includes('AUTOSTIMA') || sigilloUpper.includes('DISISTIMA')) {
+    sigilloDifesa = "Sigillo della Mancanza di autostima: svalutazione preventiva di sé, tendenza ad accentuare i propri difetti o incapacità ed a sminuire le proprie risorse.";
   } else if (sigilloUpper.includes('GIUDIZIO')) {
     sigilloDifesa = "Sigillo del Giudizio: forte condizionamento legato allo sguardo e alla critica altrui, che porta al perfezionismo o all'esitazione decisionale.";
   } else {
@@ -77,7 +79,7 @@ export function generateAnalogicalAnalysis(userData: UserData): AnalysisSummary 
       imprintingTimeline += ` con coinvolgimento del Testimone Chiave (${testimoneChiave})`;
     }
     if (timeLine.diagnosi) {
-      imprintingTimeline += `. Diagnosi Temporale: ${timeLine.diagnosi.toUpperCase()}`;
+      imprintingTimeline += `. Lettura Temporale: ${timeLine.diagnosi.toUpperCase()}`;
     }
   } else {
     imprintingTimeline = "Time Line non completata.";
@@ -86,11 +88,11 @@ export function generateAnalogicalAnalysis(userData: UserData): AnalysisSummary 
   // 5. Meccanismo Reattivo (Giustificato / Torto)
   let meccanismoReattivo: string;
   if (giustificatoTorto === 'SI') {
-    meccanismoReattivo = "Reazione GIUSTIFICATA (Dissociazione): l'inconscio ha giustificato il comportamento della figura di riferimento, rivolgendo la tensione e la responsabilità contro se stesso per preservare la relazione.";
+    meccanismoReattivo = "Ha accettato il giudizio senza dire la propria. Meccanismo: DISSOCIAZIONE.";
   } else if (giustificatoTorto === 'NO') {
-    meccanismoReattivo = "Reazione NON GIUSTIFICATA (Scissione): l'inconscio non ha perdonato né giustificato il torto subito, mantenendo aperta una carica di risentimento o rabbia verso l'esterno.";
+    meccanismoReattivo = "Ha reagito, la colpa è rimasta all'esterno. Meccanismo: SCISSIONE.";
   } else {
-    meccanismoReattivo = "Reazione reattiva non ancora definita.";
+    meccanismoReattivo = "Reazione al torto non ancora definita.";
   }
 
   // 6. Sintesi Completa Incrociata
@@ -100,7 +102,7 @@ Il disagio espresso riguardo a ${prob} trova la sua matrice nell'area ${distonic
 
 La tua modalità elettiva è caratterizzata dalla ${faseInconscia.split('.')[0]}.
 ${imprintingTimeline}.
-Attraverso il meccanismo di ${giustificatoTorto === 'SI' ? 'Dissociazione (Giustificato)' : giustificatoTorto === 'NO' ? 'Scissione (Non Giustificato)' : 'protezione emotiva'}, l'inconscio ha preservato il tuo equilibrio originario, creando tuttavia l'automatismo che oggi riattiva la tensione nei momenti critici.
+Attraverso il meccanismo di ${giustificatoTorto === 'SI' ? 'DISSOCIAZIONE (ha accettato il giudizio senza dire la propria)' : giustificatoTorto === 'NO' ? "SCISSIONE (ha reagito, la colpa è rimasta all'esterno)" : 'protezione emotiva'}, l'inconscio ha preservato il tuo equilibrio originario, creando tuttavia l'automatismo che oggi riattiva la tensione nei momenti critici.
   `.trim();
 
   // 7. Consiglio Analogico Riconciliativo

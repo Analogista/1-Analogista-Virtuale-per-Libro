@@ -30,18 +30,25 @@ const IndagineSingola: React.FC<ScreenProps> = ({ setPage }) => {
   const [status, setStatus] = useState<Status>('IDLE');
   const [message, setMessage] = useState('Premi "Inizia Calibrazione" per avviare l\'indagine nel tempo.');
   const [isCameraReady, setIsCameraReady] = useState(false);
-  const [summary, setSummary] = useState<{ age?: number; date?: string; witness?: string; justification?: string }>({
+  const [summary, setSummary] = useState<{ age?: number; date?: string; witness?: string; justification?: string; shouldJustify?: string; giustificatoRaw?: string; dovrebbeRaw?: string }>({
     age: userData.timeLine?.etaEventoCausa ? parseInt(userData.timeLine.etaEventoCausa, 10) : undefined,
     date: userData.giornoEvento || undefined,
     witness: userData.testimoneChiave || undefined,
-    justification: userData.giustificatoTorto ? (userData.giustificatoTorto === 'SI' ? 'Giustificato' : 'Non Giustificato') : undefined
+    justification: userData.giustificatoTorto === 'SI' ? 'Giustificato (SÌ)' : userData.giustificatoTorto === 'NO' ? 'Non Giustificato (NO)' : undefined,
+    shouldJustify: userData.avreiDovutoGiustificare === 'SI' ? 'SÌ' : userData.avreiDovutoGiustificare === 'NO' ? 'NO' : undefined,
+    giustificatoRaw: userData.giustificatoTorto || undefined,
+    dovrebbeRaw: userData.avreiDovutoGiustificare || undefined,
   });
 
   const cameraRef = useRef<any>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const voiceService = useMemo(() => new AdvancedVoiceService(), []);
+  const guardRef = useRef<SessionGuard | null>(null);
 
-  useEffect(() => () => voiceService.cancel(), [voiceService]);
+  useEffect(() => () => {
+    guardRef.current?.cancel();
+    voiceService.cancel();
+  }, [voiceService]);
 
   const handleCameraReady = () => {
     if (videoRef.current) {
@@ -52,12 +59,14 @@ const IndagineSingola: React.FC<ScreenProps> = ({ setPage }) => {
 
   const handleExit = () => {
     if (window.confirm("Sei sicuro di voler uscire? La voce e il test verranno interrotti.")) {
+        guardRef.current?.cancel();
         voiceService.cancel();
         setPage(0);
     }
   };
 
   const resetTest = () => {
+    guardRef.current?.cancel();
     voiceService.cancel();
     setStatus('IDLE');
     setSummary({});
@@ -110,7 +119,9 @@ const IndagineSingola: React.FC<ScreenProps> = ({ setPage }) => {
     const currentAge = parseInt(userData.eta, 10) || 30;
     const nome = userData.nome || 'Amico';
     const problema = userData.problema || 'il tuo blocco emotivo o disagio';
+    guardRef.current?.cancel();
     const guard = new SessionGuard(() => voiceService.cancel());
+    guardRef.current = guard;
 
     setStatus('TESTING');
     try {
@@ -212,7 +223,25 @@ const IndagineSingola: React.FC<ScreenProps> = ({ setPage }) => {
         const resFemale = await askWithStrictRepeat('Era una donna? Sì o no, attendo risposta.', guard);
         if (guard.isCancelled()) return;
         if (resFemale === 'NON_RILEVATO') { setStatus('IDLE'); setMessage('Ricerca interrotta.'); return; }
-        candidates = resFemale === 'SI' ? femaleCandidates : maleCandidates;
+        if (resFemale !== 'SI') {
+          setSummary(prev => ({ ...prev, witness: 'Testimone non identificato' }));
+          setUserData(prev => ({
+            ...prev,
+            testimoneChiave: 'Testimone non identificato',
+            completedTests: {
+              ...prev.completedTests,
+              timeLine: true,
+              qualeGiorno: true,
+              testimone: true,
+              indagineSingola: true
+            }
+          }));
+          setStatus('SUCCESS');
+          setMessage('Testimone non identificato.');
+          await voiceService.speak('Testimone non identificato. Indagine conclusa.');
+          return;
+        }
+        candidates = femaleCandidates;
       }
 
       // 7. Ricerca figura specifica
@@ -226,7 +255,8 @@ const IndagineSingola: React.FC<ScreenProps> = ({ setPage }) => {
           if (ambiguous.includes(candidate)) {
             const sideRes = await askWithStrictRepeat('Da parte di papà? Sì o No, attendo risposta.', guard);
             if (guard.isCancelled()) return;
-            witness += sideRes === 'SI' ? ' (Paterno)' : ' (Materno)';
+            if (sideRes === 'SI') witness += ' (Paterno)';
+            else if (sideRes === 'NO') witness += ' (Materno)';
           }
           break;
         }
@@ -234,18 +264,31 @@ const IndagineSingola: React.FC<ScreenProps> = ({ setPage }) => {
 
       setSummary(prev => ({ ...prev, witness }));
 
-      // 8. Domanda sulla giustificazione del torto
-      const resJust = await askWithStrictRepeat(`Caro inconscio, hai giustificato il torto ricevuto da ${witness}? Sì o no, attendo risposta.`, guard);
+      // 8. Domande sulla giustificazione del torto
+      const witnessRef = witness !== 'Non identificato' ? `da ${witness}` : "in quell'evento";
+      const resJust = await askWithStrictRepeat(`Caro inconscio, hai giustificato il torto ricevuto ${witnessRef}? Sì o no, attendo risposta.`, guard);
       if (guard.isCancelled()) return;
       if (resJust === 'NON_RILEVATO') { setStatus('IDLE'); setMessage('Ricerca interrotta.'); return; }
+
+      if (!await guard.delay(800)) return;
+      const resShouldJust = await askWithStrictRepeat(`Caro inconscio, avresti dovuto giustificare il torto ricevuto ${witnessRef}? Sì o no, attendo risposta.`, guard);
+      if (guard.isCancelled()) return;
+      if (resShouldJust === 'NON_RILEVATO') { setStatus('IDLE'); setMessage('Ricerca interrotta.'); return; }
       
-      setSummary(prev => ({ ...prev, justification: resJust === 'SI' ? 'Giustificato' : 'Non Giustificato' }));
+      setSummary(prev => ({
+        ...prev,
+        justification: resJust === 'SI' ? 'Giustificato (SÌ)' : 'Non Giustificato (NO)',
+        shouldJustify: resShouldJust === 'SI' ? 'SÌ' : 'NO',
+        giustificatoRaw: resJust,
+        dovrebbeRaw: resShouldJust
+      }));
 
       // Salvataggio stato completo
       setUserData(prev => ({
         ...prev,
         testimoneChiave: witness,
         giustificatoTorto: resJust,
+        avreiDovutoGiustificare: resShouldJust,
         completedTests: {
           ...prev.completedTests,
           timeLine: true,
@@ -257,7 +300,7 @@ const IndagineSingola: React.FC<ScreenProps> = ({ setPage }) => {
 
       setStatus('SUCCESS');
       setMessage(`Indagine completata con successo! Età: ${foundAge} anni; Data: ${foundDate}; Testimone: ${witness}; Torto: ${resJust === 'SI' ? 'Giustificato' : 'Non Giustificato'}.`);
-      await voiceService.speak(`Indagine completata con successo. Testimone identificato: ${witness}. Torto ${resJust === 'SI' ? 'giustificato' : 'non giustificato'}. Puoi consultare l'esito.`);
+      await voiceService.speak(`Indagine completata con successo. Testimone identificato: ${witness}. Puoi consultare l'esito.`);
     } catch (error) {
       console.error(error);
       setStatus('ERROR');
@@ -282,6 +325,7 @@ const IndagineSingola: React.FC<ScreenProps> = ({ setPage }) => {
         </div>
         <button
           onClick={handleExit}
+          data-keep-voice="true"
           className="text-xs uppercase tracking-widest font-bold text-gray-500 hover:text-blue-600 border border-gray-200 px-3 py-1.5 rounded-lg transition"
         >
           &larr; Torna alla Home
@@ -295,7 +339,7 @@ const IndagineSingola: React.FC<ScreenProps> = ({ setPage }) => {
       </InfoBox>
 
       <div className="my-6">
-        <CameraView ref={cameraRef} videoRef={videoRef} onReady={handleCameraReady} onCalibrated={handleCalibrated} />
+        <CameraView ref={cameraRef} videoRef={videoRef} onReady={handleCameraReady} onCalibrated={handleCalibrated} showCalibrationButton={false} />
       </div>
 
       <div className="text-center p-4 bg-slate-50 border border-slate-200 rounded-xl min-h-[90px] flex flex-col justify-center">
@@ -345,7 +389,16 @@ const IndagineSingola: React.FC<ScreenProps> = ({ setPage }) => {
             </div>
             <div className="p-3 bg-white rounded-xl border border-indigo-100 shadow-sm">
               <span className="text-[10px] uppercase font-bold text-slate-500">4. Reazione al Torto</span>
-              <p className="text-lg font-bold text-indigo-900">{summary.justification || '-'}</p>
+              <p className="text-base font-bold text-indigo-900">Hai giustificato: {summary.justification || '-'}</p>
+              <p className="text-sm font-semibold text-indigo-800 mt-1">Avresti dovuto: {summary.shouldJustify || '-'}</p>
+              {(summary.giustificatoRaw === 'SI' || summary.giustificatoRaw === 'NO') &&
+               (summary.dovrebbeRaw === 'SI' || summary.dovrebbeRaw === 'NO') && (
+                <p className="text-xs italic text-slate-600 mt-1.5">
+                  {summary.giustificatoRaw === summary.dovrebbeRaw
+                    ? 'Risposta coerente.'
+                    : "Secondo il modello DAB, la discordanza tra le due risposte indica un possibile conflitto: è un'ipotesi da osservare, non una prova."}
+                </p>
+              )}
             </div>
           </div>
 

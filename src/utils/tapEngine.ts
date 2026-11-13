@@ -99,7 +99,7 @@ export const enrichTapDiagnosis = (diagnosis: TapDiagnosisResult): TapDiagnosisR
     referente = 'Triangolo (Madre / accoglienza)';
     origine = 'Conflitto primario legato alla figura materna o alle figure femminili.';
     stile = 'Protettivo, avvolgente e premuroso; tende a proporsi direttamente come soluzione ai problemi dell’altro.';
-    relazioni = 'Apparente dolcezza e condizionamento affettivo; sensibilità al timore dell’abbandono e della disistima.';
+    relazioni = 'Apparente dolcezza e condizionamento affettivo; sensibilità al timore dell’abbandono e della mancanza di autostima.';
   } else if (isEgo) {
     referente = 'Cerchio (Sé / triade)';
     origine = 'Struttura triadica con integrazione del rapporto con sé e con le figure genitoriali.';

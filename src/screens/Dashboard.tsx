@@ -50,8 +50,8 @@ const tests: TestItem[] = [
   { id: 'tap', title: 'Test T.A.P. (Asta, Cerchio, Triangolo)', description: 'Tipologia Analogica della Personalità e distonia di base', component: TestTAP, icon: '🔺' },
   { id: 'induttore', title: 'Test Induttore', description: 'Mano destra e sinistra: Libertà vs Sogno', component: TestInduttore, icon: '👋' },
   { id: 'nome', title: 'Test del Nome', description: 'Verifica del riconoscimento dell\'identità da parte dell\'inconscio', component: TestNome, icon: '🆔' },
-  { id: 'puntiDistonici', title: 'Test Punti Distonici', description: 'Indagine sulle 4 aree: famiglia, affetti, passioni, realizzazione', component: TestPuntiDistonici, icon: '🎯' },
-  { id: 'sigilli', title: 'Test Sigilli e Vincoli', description: 'Colpa, abbandono, disistima, giudizio degli altri', component: TestSigilliVincoli, icon: '🔐' },
+  { id: 'puntiDistonici', title: 'Test Punti Distonici', description: 'Indagine sulle 5 aree: famiglia d\'origine, acquisita, affetti, passioni, realizzazione', component: TestPuntiDistonici, icon: '🎯' },
+  { id: 'sigilli', title: 'Test Sigilli e Vincoli', description: 'Colpa, abbandono, giudizio, mancanza di autostima', component: TestSigilliVincoli, icon: '🔐' },
 
   // Linea del Tempo & Indagini nel Tempo
   { id: 'indagineSingola', title: 'Indietro nel Tempo (Grande Indagine)', description: 'Ciclo completo: Età, Giorno esatto, Testimone e Torto', component: IndagineSingola, icon: '⏳' },
@@ -63,6 +63,7 @@ const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const { userData, setAudioEnabled } = useUser();
   const [activeTest, setActiveTest] = useState<string | null>(null);
+  const [showIntroGuide, setShowIntroGuide] = useState(false);
   const [showAllTests, setShowAllTests] = useState(false);
   const { setHeader, setProMode } = useHeader();
 
@@ -125,7 +126,60 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="space-y-6 animate-fadeIn relative pb-12">
-      
+
+      {/* GUIDA INTRODUTTIVA (Chiusa di default, primo elemento visibile) */}
+      <section className="bg-orange-50/90 rounded-2xl border-2 border-orange-200 shadow-sm overflow-hidden transition-all">
+        <button
+          type="button"
+          onClick={() => setShowIntroGuide(prev => !prev)}
+          aria-expanded={showIntroGuide}
+          className="w-full p-4 sm:p-5 text-left flex items-center justify-between gap-4 hover:bg-orange-100/50 transition cursor-pointer"
+        >
+          <div className="flex items-center gap-3.5 min-w-0">
+            <div className="w-10 h-10 rounded-xl bg-white border border-orange-200 flex items-center justify-center text-xl flex-shrink-0 shadow-2xs">
+              📚
+            </div>
+            <div className="min-w-0">
+              <h2 className="font-serif font-black text-base sm:text-lg text-slate-900 leading-tight">
+                📖 Guida introduttiva
+              </h2>
+              <p className="text-xs sm:text-sm text-slate-600 mt-0.5">
+                Chi è Max Pisani, cos’è l’app e come posizionarsi
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <span className="text-xs font-semibold text-orange-700 hidden sm:inline">
+              {showIntroGuide ? 'Chiudi guida' : 'Apri guida'}
+            </span>
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center bg-white border border-orange-200 text-orange-700 transition-transform duration-300 ${showIntroGuide ? 'rotate-180 bg-orange-100' : ''}`}>
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
+          </div>
+        </button>
+
+        {showIntroGuide && (
+          <div className="p-4 sm:p-5 pt-3 border-t border-orange-200 bg-orange-50/50 animate-fadeIn">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {infoTests.map((test) => (
+                <button
+                  key={test.id}
+                  onClick={() => { setAudioEnabled(false); setActiveTest(test.id); }}
+                  className="flex flex-col items-center justify-center p-3.5 rounded-xl border border-orange-200 bg-white hover:bg-orange-100/50 transition-all text-center h-full shadow-sm"
+                >
+                  <span className="text-xl mb-1">{test.icon}</span>
+                  <h4 className="font-bold text-sm text-gray-900 mb-0.5">{test.title}</h4>
+                  <p className="text-xs text-gray-600">{test.description}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </section>
+
       {/* INTRODUZIONE ALL'ANALOGISTA VIRTUALE */}
       <div className="bg-white rounded-2xl border-2 border-indigo-200 p-4 sm:p-5 shadow-sm space-y-3">
         <div className="flex items-start justify-between gap-3">
@@ -429,25 +483,6 @@ const Dashboard: React.FC = () => {
               </div>
             </div>
 
-            {/* SOTTO-BLOCCO: CONOSCENZA E METODO */}
-            <div className="bg-orange-50/90 rounded-xl p-4 border border-orange-200 shadow-2xs">
-              <h3 className="text-sm font-serif font-bold text-gray-900 mb-3 text-center sm:text-left flex items-center gap-2">
-                <span>📚</span> Conoscenza e Metodo (Guida Introduttiva)
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {infoTests.map((test) => (
-                  <button
-                    key={test.id}
-                    onClick={() => { setAudioEnabled(false); setActiveTest(test.id); }}
-                    className="flex flex-col items-center justify-center p-3.5 rounded-xl border border-orange-200 bg-white hover:bg-orange-100/50 transition-all text-center h-full shadow-sm"
-                  >
-                    <span className="text-xl mb-1">{test.icon}</span>
-                    <h4 className="font-bold text-sm text-gray-900 mb-0.5">{test.title}</h4>
-                    <p className="text-xs text-gray-600">{test.description}</p>
-                  </button>
-                ))}
-              </div>
-            </div>
           </div>
         )}
       </section>

@@ -28,7 +28,7 @@ B) PROBLEMA DI SOGNO = DIFFICOLTÀ A CONQUISTARE/COINVOLGERSI
   - Come Dante che idealizza Beatrice ma non la possiede mai concretamente, la persona ha paura di fallire nella conquista reale o di sporcare l'ideale con la realtà. Tende a idealizzare e poi fuggire (o essere fuggita).
   - Il conflitto è tra la LIBERTÀ (di agire) e la COSCIENZA (paura delle conseguenze emotive).
   - Dinamica Interiore: "Ti lascio perché ti amo" (paura di soffrire). La demotivazione blocca l'azione.
-  - Sigilli tipici (cause): Abbandono, Senso di Colpa, Disistima, Paura del Giudizio.
+  - Sigilli tipici (cause): Abbandono, Senso di Colpa, Mancanza di autostima, Paura del Giudizio.
 
 3. STRUTTURA DELLA PERSONALITÀ: GENITORIALI VS EGOCENTRICI
 - **GENITORIALI (Circa 20% della popolazione):** 
@@ -48,7 +48,7 @@ B) PROBLEMA DI SOGNO = DIFFICOLTÀ A CONQUISTARE/COINVOLGERSI
 I sigilli sono le paure profonde che bloccano l'azione strategica:
 - **SENSI DI COLPA (Sogno):** "Se faccio questo per me, farò soffrire qualcun altro". Blocca la libertà di agire per il proprio piacere.
 - **PAURA DELL'ABBANDONO (Sogno):** "Se non faccio questo, resterò solo/a". Blocca l'autonomia emotiva.
-- **DISISTIMA (Sogno):** "Non sono capace/Non valgo abbastanza". Blocca il tentativo di conquista.
+- **MANCANZA DI AUTOSTIMA (Sogno):** "Non sono capace/Non valgo abbastanza". Blocca il tentativo di conquista.
 - **TIMORE DEL GIUDIZIO (Sogno):** "Cosa penseranno gli altri di me?". Blocca l'espressione del sé reale.
 - **RIFIUTO (Libertà):** Paura di non essere accettati per ciò che si è.
 - **COMPARAZIONE FALLIMENTARE (Libertà):** Sentirsi sempre inferiori nel confronto con altri (es. fratelli/genitori).
@@ -60,12 +60,12 @@ Il problema attuale non nasce oggi, ma è una ripetizione analogica.
 - **Fatto:** L'evento recente (ultimi mesi/anni) che ha riattivato quel file per analogia (es. un'umiliazione sul lavoro).
 - **Punto Utopico (PU):** Il momento teorico di equilibrio (Età attuale / 2).
 - **Punto Topico (PT):** Il momento di massimo dolore/rottura (Media tra età Antefatto e età Fatto).
-- **Diagnosi Temporale:**
+- **Lettura Temporale:**
   - Se PT < PU -> **Libertà Vincolata** (Il passato pesa sul futuro).
   - Se PT > PU -> **Sogno Frustrato** (Il futuro è bloccato dal presente).
 
 6. REAZIONE AL TORTO: DISSOCIAZIONE VS SCISSIONE
 Come reagisce l'individuo al trauma?
-- **GIUSTIFICARE (SÌ):** Porta alla **DISSOCIAZIONE**. L'individuo si assume la colpa ("Ho sbagliato io", "Loro lo hanno fatto per il mio bene"). Crea conflitto interno, ansia, auto-sabotaggio.
-- **NON GIUSTIFICARE (NO):** Porta alla **SCISSIONE**. L'individuo proietta la colpa all'esterno ("È colpa loro", "Il mondo è ingiusto"). Crea rabbia, rancore, conflitti esterni.
+- **GIUSTIFICARE (SÌ):** Ha accettato il giudizio senza dire la propria. Meccanismo: **DISSOCIAZIONE**.
+- **NON GIUSTIFICARE (NO):** Ha reagito, la colpa è rimasta all'esterno. Meccanismo: **SCISSIONE**.
 `;

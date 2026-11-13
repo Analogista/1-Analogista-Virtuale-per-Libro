@@ -15,8 +15,8 @@ interface ScreenProps {
 const sigilliMapping = {
   colpa: "Sensi di colpa",
   abbandono: "Paura dell'abbandono",
-  disistima: "Mancanza di autostima",
-  giudizio: "Timore del giudizio degli altri"
+  giudizio: "Timore del giudizio degli altri",
+  disistima: "Mancanza di autostima"
 };
 type SigilloKey = keyof typeof sigilliMapping;
 
@@ -33,9 +33,13 @@ const TestSigilliVincoli: React.FC<ScreenProps> = ({ setPage }) => {
   const cameraRef = useRef<any>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const voiceService = useMemo(() => new AdvancedVoiceService(), []);
+  const guardRef = useRef<SessionGuard | null>(null);
 
   useEffect(() => {
-    return () => voiceService.cancel();
+    return () => {
+      guardRef.current?.cancel();
+      voiceService.cancel();
+    };
   }, [voiceService]);
 
   const handleCameraReady = () => {
@@ -62,6 +66,7 @@ const TestSigilliVincoli: React.FC<ScreenProps> = ({ setPage }) => {
   };
 
   const handleRepeat = () => {
+    guardRef.current?.cancel();
     voiceService.cancel();
     setStatus('IDLE');
     setIsCalibrated(false);
@@ -72,6 +77,7 @@ const TestSigilliVincoli: React.FC<ScreenProps> = ({ setPage }) => {
 
   const handleExit = () => {
     if (window.confirm("Sei sicuro di voler uscire? La voce e il test verranno interrotti.")) {
+        guardRef.current?.cancel();
         voiceService.cancel();
         setPage(0);
     }
@@ -98,12 +104,17 @@ const TestSigilliVincoli: React.FC<ScreenProps> = ({ setPage }) => {
     const nome = userData.nome ? userData.nome : 'Amico';
     const distoniaRef = userData.puntoDistonicoFinale;
 
+    guardRef.current?.cancel();
+    const guard = new SessionGuard(() => voiceService.cancel());
+    guardRef.current = guard;
+
     try {
       if (distoniaRef && distoniaRef !== 'Nessun punto distonico') {
         await voiceService.speak(`Caro inconscio di ${nome}, in relazione all'area emersa (${distoniaRef}), adesso scopriamo quali sigilli, complessi o blocchi emotivi sono presenti in te.`);
       } else {
         await voiceService.speak(`Caro inconscio di ${nome}, ora verifichiamo quali sigilli o complessi emotivi sono presenti in te.`);
       }
+      if (guard.isCancelled()) return;
 
       const sigilliQuestionMapping: Record<SigilloKey, string> = {
         colpa: `Caro inconscio, sono i sensi di colpa? Sì o No, attendo risposta.`,
@@ -112,8 +123,8 @@ const TestSigilliVincoli: React.FC<ScreenProps> = ({ setPage }) => {
         disistima: `È la mancanza di autostima? Sì o no, attendo risposta.`
       };
 
-      const guard = new SessionGuard(() => voiceService.cancel());
       await voiceService.speak(`Caro inconscio, individuiamo i vincoli emotivi attivi.`);
+      if (guard.isCancelled()) return;
 
       for (const sigillo of Object.keys(sigilliMapping) as SigilloKey[]) {
         setMessage(`Indagine in corso: ${sigilliMapping[sigillo]}...`);
@@ -121,7 +132,7 @@ const TestSigilliVincoli: React.FC<ScreenProps> = ({ setPage }) => {
         const res = await voiceService.askQuestionWithSingleRetry(text);
         if (guard.isCancelled()) return;
 
-        setResults(prev => ({ ...prev, [sigillo]: res.response }));
+        setResults(prev => ({ ...prev, [sigillo]: res.response || 'NON_RILEVATO' }));
         currentSigilli[sigillo] = res.response || 'NON_RILEVATO';
         if (!await guard.delay(1200)) return;
       }
@@ -139,6 +150,7 @@ const TestSigilliVincoli: React.FC<ScreenProps> = ({ setPage }) => {
         setStatus('SELECTING');
         setMessage('Sono emersi più sigilli. Determiniamo quello prioritario...');
         await voiceService.speak(`Caro inconscio, individuiamo quale dei sigilli presenti desideri sbloccare con priorità.`);
+        if (guard.isCancelled()) return;
 
         let priorityFound = '';
         for (const sigillo of sigilliPresenti) {
@@ -153,14 +165,26 @@ const TestSigilliVincoli: React.FC<ScreenProps> = ({ setPage }) => {
         }
 
         if (!priorityFound) {
-          priorityFound = sigilliMapping[sigilliPresenti[0]];
+          const noPriorityMsg = 'Nessun sigillo prioritario identificato. Puoi ripetere il test in un altro momento.';
+          setSelectedSigillo('');
+          setMessage(noPriorityMsg);
+          setStatus('SUCCESS');
+          setUserData(prev => ({
+            ...prev,
+            sigilloFinale: '',
+            completedTests: { ...prev.completedTests, sigilli: true }
+          }));
+          try {
+            await voiceService.speak(noPriorityMsg);
+          } catch { /* ignore */ }
+          return;
         }
 
         await completeTest(priorityFound, `Sigillo prioritario identificato: ${priorityFound}.`);
       }
     } catch (error) {
       console.error(error);
-      if (status !== 'IDLE') setMessage("Test interrotto. Clicca su Riprova per ricominciare.");
+      if (!guard.isCancelled()) setMessage("Test interrotto. Clicca su Riprova per ricominciare.");
     }
   };
 
@@ -173,10 +197,11 @@ const TestSigilliVincoli: React.FC<ScreenProps> = ({ setPage }) => {
             Test Standalone
           </span>
           <h2 className="text-2xl font-serif font-black text-gray-900">Test Sigilli e Vincoli</h2>
-          <h3 className="text-sm font-medium text-gray-600">Sensi di colpa, paura dell'abbandono, mancanza di autostima, giudizio</h3>
+          <h3 className="text-sm font-medium text-gray-600">Sensi di colpa, paura dell'abbandono, giudizio, mancanza di autostima</h3>
         </div>
         <button
           onClick={handleExit}
+          data-keep-voice="true"
           className="text-xs uppercase tracking-widest font-bold text-gray-500 hover:text-blue-600 border border-gray-200 px-3 py-1.5 rounded-lg transition"
         >
           &larr; Torna alla Home
@@ -276,12 +301,14 @@ const TestSigilliVincoli: React.FC<ScreenProps> = ({ setPage }) => {
           <div className="bg-white/80 backdrop-blur rounded-xl p-4 border border-purple-200 my-3">
             <p className="text-xs font-bold uppercase tracking-wider text-purple-800 mb-1">Sigillo Primario Identificato:</p>
             <p className="text-lg font-serif font-bold text-purple-900">
-              {selectedSigillo || 'Nessun sigillo rilevato'}
+              {selectedSigillo || 'Nessun sigillo prioritario identificato'}
             </p>
             <p className="text-xs text-slate-600 mt-1">
-              {selectedSigillo && selectedSigillo !== 'Nessun sigillo rilevato'
+              {selectedSigillo === 'Nessun sigillo rilevato'
+                ? 'Nessun vincolo emotivo restrittivo emerso in questa sessione.'
+                : selectedSigillo
                 ? `L'inconscio manifesta una risonanza dominante con il sigillo "${selectedSigillo}". Comprendere l'origine di questo vincolo permette di liberare energia vitale.`
-                : 'Nessun vincolo emotivo restrittivo emerso in questa sessione.'}
+                : 'Nessun sigillo prioritario identificato. Puoi ripetere il test in un altro momento.'}
             </p>
           </div>
 

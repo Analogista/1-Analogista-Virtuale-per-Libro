@@ -198,42 +198,23 @@ export const BookConsole: React.FC<BookConsoleProps> = ({ onSelectTest, complete
 
           {isPhase2Open && (
             <div className="px-3.5 pb-3.5 sm:px-4 sm:pb-4 pt-1 border-t border-indigo-100/80 animate-fadeIn">
-              <p className="text-xs text-slate-600 leading-relaxed mb-3">
-                <strong>Fase 2 — Approfondimenti scelti liberamente:</strong> Grande Indagine, Quale Giorno e Testimone Chiave/Torto. 
-                <span className="text-slate-500 font-medium"> (La Time Line resta un calcolo separato per individuare l'età causa).</span>
+              <p className="text-xs text-slate-600 leading-relaxed mb-4">
+                <strong>Fase 2 — Approfondimenti scelti liberamente:</strong> Una volta emersi i blocchi, usa questi strumenti per trovare l'evento causa nel passato.
               </p>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                {[
-                  { id: 'indagineSingola', title: 'Indietro nel Tempo', label: 'Grande Indagine completa' },
-                  { id: 'qualeGiorno', title: 'Test Quale Giorno', label: 'Stagione, mese e data' },
-                  { id: 'testimone', title: 'Testimone & Torto', label: 'Figura legata e reazione' },
-                ].map((t) => {
-                  const isDone = !!completedTests[t.id];
-                  return (
-                    <button
-                      key={t.id}
-                      onClick={() => onSelectTest(t.id)}
-                      className="flex items-center justify-between p-2.5 rounded-lg bg-white hover:bg-indigo-50 border border-indigo-100 hover:border-indigo-300 text-left transition group text-xs shadow-2xs"
-                    >
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="font-bold text-slate-800 group-hover:text-indigo-700 truncate">
-                          {t.title}
-                        </span>
-                      </div>
-                      {isDone ? (
-                        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 flex-shrink-0">
-                          ✓ Fatto
-                        </span>
-                      ) : (
-                        <span className="text-[11px] text-indigo-600 font-bold group-hover:translate-x-0.5 transition-transform flex-shrink-0">
-                          Apri &rarr;
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
+              <button
+                onClick={() => onSelectTest('ricercaCause')}
+                className="w-full flex items-center justify-between p-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white transition shadow-md group"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl group-hover:scale-110 transition-transform">🧭</span>
+                  <div className="text-left">
+                    <h4 className="font-bold text-sm">Vai alla Ricerca Cause</h4>
+                    <p className="text-[10px] text-indigo-100 opacity-80">Grande Indagine, Quale Giorno, Testimone</p>
+                  </div>
+                </div>
+                <span className="text-xl group-hover:translate-x-1 transition-transform">→</span>
+              </button>
             </div>
           )}
         </div>

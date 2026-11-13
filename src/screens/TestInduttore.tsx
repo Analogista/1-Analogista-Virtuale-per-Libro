@@ -225,7 +225,7 @@ const TestInduttore: React.FC<ScreenProps> = ({ setPage }) => {
       {/* Standalone Outcome Card */}
       {status === 'SUCCESS' && userData.induttoreResult && (
         <div className="mt-6 p-6 rounded-2xl bg-indigo-950/50 border-2 border-indigo-500/40 text-center animate-fadeIn">
-          <h4 className="text-xs uppercase tracking-widest text-indigo-300 font-bold mb-1">Diagnosi Induttore Rilevata</h4>
+          <h4 className="text-xs uppercase tracking-widest text-indigo-300 font-bold mb-1">Esito Induttore Rilevato</h4>
           <p className="text-2xl font-serif font-black text-white mb-2">Induttore {userData.induttoreResult}</p>
           <p className="text-sm text-indigo-200 max-w-xl mx-auto">
             {userData.induttoreResult === 'Destro'

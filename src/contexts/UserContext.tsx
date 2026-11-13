@@ -12,6 +12,7 @@ const initialUserData: UserData = {
   testNome: { nomeVero: '', nomeFalso: '' },
   puntiDistonici: {
     famiglia: '',
+    famigliaAcquisita: '',
     sentimentali: '',
     sessuali: '',
     autorealizzazione: '',
@@ -30,6 +31,7 @@ const initialUserData: UserData = {
   testimoneChiave: '',
   giornoEvento: '',
   giustificatoTorto: '',
+  avreiDovutoGiustificare: '',
   completedTests: {},
   aiSummary: '',
   hasContactedMax: false,
@@ -48,7 +50,18 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const savedData = localStorage.getItem('userData');
       if (savedData) {
         const parsedData = JSON.parse(savedData);
-        return { ...initialUserData, ...parsedData };
+        return {
+          ...initialUserData,
+          ...parsedData,
+          puntiDistonici: {
+            ...initialUserData.puntiDistonici,
+            ...(parsedData.puntiDistonici || {}),
+          },
+          sigilli: {
+            ...initialUserData.sigilli,
+            ...(parsedData.sigilli || {}),
+          },
+        };
       }
     } catch (error) {
       console.error("Failed to parse userData from localStorage", error);

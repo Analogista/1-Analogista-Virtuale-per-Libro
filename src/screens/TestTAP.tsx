@@ -180,7 +180,7 @@ export const TestTAP: React.FC<ScreenProps> = ({ setPage }) => {
     try {
       const profile = computedDiagnosis.profilo;
       const profileSpeech = profile
-        ? ` Famiglia evolutiva: ${profile.famiglia}. Referente simbolico: ${profile.referente}. Polarità: ${profile.polarita}. Origine: ${profile.origine}. Stile comportamentale: ${profile.stile}. Dinamica diagnostica: ${computedDiagnosis.dinamica}. Dinamica relazionale: ${profile.relazioni}. Meccanismo: ${profile.meccanismo}. Orientamento: ${profile.orientamento}.`
+        ? ` Famiglia evolutiva: ${profile.famiglia}. Referente simbolico: ${profile.referente}. Polarità: ${profile.polarita}. Origine: ${profile.origine}. Stile comportamentale: ${profile.stile}. Dinamica analogica: ${computedDiagnosis.dinamica}. Dinamica relazionale: ${profile.relazioni}. Meccanismo: ${profile.meccanismo}. Orientamento: ${profile.orientamento}.`
         : '';
       await voiceService.speak(`Test T.A.P. completato con successo. La tua tipologia analogica è ${computedDiagnosis.tipologia}.${profileSpeech} Puoi consultare il tuo profilo.`);
     } catch { /* ignore */ }
@@ -304,7 +304,7 @@ export const TestTAP: React.FC<ScreenProps> = ({ setPage }) => {
 
       {diagnosis.isValid && (
         <div className="mt-6 p-6 rounded-2xl bg-indigo-950/40 border border-indigo-500/40 text-center animate-fadeIn">
-          <h4 className="text-xs uppercase tracking-widest text-indigo-300 font-bold mb-1">Diagnosi T.A.P. Rilevata</h4>
+          <h4 className="text-xs uppercase tracking-widest text-indigo-300 font-bold mb-1">Profilo T.A.P. Rilevato</h4>
           <p className="text-xl font-serif font-bold text-white mb-2">{diagnosis.tipologia}</p>
           {diagnosis.distonia && <p className="text-sm text-indigo-200">Distonia: {diagnosis.distonia}</p>}
           {diagnosis.profilo && (
