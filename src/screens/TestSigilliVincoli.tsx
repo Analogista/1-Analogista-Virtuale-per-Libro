@@ -15,7 +15,7 @@ interface ScreenProps {
 const sigilliMapping = {
   colpa: "Sensi di colpa",
   abbandono: "Paura dell'abbandono",
-  giudizio: "Timore del giudizio degli altri",
+  giudizio: "Timore del giudizio",
   disistima: "Mancanza di autostima"
 };
 type SigilloKey = keyof typeof sigilliMapping;
@@ -119,7 +119,7 @@ const TestSigilliVincoli: React.FC<ScreenProps> = ({ setPage }) => {
       const sigilliQuestionMapping: Record<SigilloKey, string> = {
         colpa: `Caro inconscio, sono i sensi di colpa? Sì o No, attendo risposta.`,
         abbandono: `È la paura dell'abbandono? Sì o no, attendo risposta.`,
-        giudizio: `È il timore del giudizio degli altri? Sì o no, attendo risposta.`,
+        giudizio: `È il timore del giudizio? Sì o no, attendo risposta.`,
         disistima: `È la mancanza di autostima? Sì o no, attendo risposta.`
       };
 
@@ -165,7 +165,7 @@ const TestSigilliVincoli: React.FC<ScreenProps> = ({ setPage }) => {
         }
 
         if (!priorityFound) {
-          const noPriorityMsg = 'Nessun sigillo prioritario identificato. Puoi ripetere il test in un altro momento.';
+          const noPriorityMsg = "Non c'è una priorità chiara tra i sigilli emersi. Ti invito a riprovare in un altro giorno.";
           setSelectedSigillo('');
           setMessage(noPriorityMsg);
           setStatus('SUCCESS');
@@ -197,7 +197,7 @@ const TestSigilliVincoli: React.FC<ScreenProps> = ({ setPage }) => {
             Test Standalone
           </span>
           <h2 className="text-2xl font-serif font-black text-gray-900">Test Sigilli e Vincoli</h2>
-          <h3 className="text-sm font-medium text-gray-600">Sensi di colpa, paura dell'abbandono, giudizio, mancanza di autostima</h3>
+          <h3 className="text-sm font-medium text-gray-600">Sensi di colpa, paura dell'abbandono, timore del giudizio, mancanza di autostima (disistima)</h3>
         </div>
         <button
           onClick={handleExit}

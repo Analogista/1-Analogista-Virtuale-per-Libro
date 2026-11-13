@@ -28,20 +28,20 @@ const Introduzione: React.FC<ScreenProps> = ({ setPage }) => {
 
       <div className="space-y-4 text-gray-700">
         <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-            <h4 className="font-bold text-gray-800">Fase 1: Fotografia Iniziale (T0)</h4>
-            <p className="text-sm mt-1">Dopo l'inserimento dei tuoi dati e la calibrazione preparatoria della posizione, esplori i cinque test di partenza: <strong>T.A.P.</strong>, <strong>Test Induttore</strong>, <strong>Test del Nome</strong> (con cui si verifica e si stabilisce il codice di risposta "SÌ" e "NO" dell'inconscio), <strong>Test dei Punti Distonici</strong> (sulle 5 aree della vita) e <strong>Test dei Sigilli</strong> (<em>Senso di colpa</em>, <em>Mancanza di autostima</em>, ecc.).</p>
+            <h4 className="font-bold text-gray-800">Fase 1: Test Analogici di Base</h4>
+            <p className="text-sm mt-1">Dopo l'inserimento dei tuoi dati e la calibrazione preparatoria della posizione, esplori i cinque test principali: <strong>T.A.P.</strong>, <strong>Test Induttore</strong>, <strong>Test del Nome</strong> (con cui si verifica e si stabilisce il codice di risposta "SÌ" e "NO" dell'inconscio), <strong>Test dei Punti Distonici</strong> (sulle 5 aree della vita) e <strong>Test dei Sigilli</strong> (<em>sensi di colpa</em>, <em>paura dell'abbandono</em>, <em>timore del giudizio</em>, <em>mancanza di autostima (disistima)</em>).</p>
         </div>
         <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-            <h4 className="font-bold text-gray-800">Fase 2: Approfondimenti a scelta libera</h4>
-            <p className="text-sm mt-1">In base a ciò che emerge dalla fotografia iniziale e dalla lettura, puoi esplorare liberamente gli approfondimenti su evento causa e reazione: <strong>Indietro nel Tempo (Grande Indagine)</strong>, <strong>Test Quale Giorno</strong> e <strong>Testimone Chiave & Torto</strong> (con la Time Line per individuare l'età associata all'evento e la reazione di giustificazione o non giustificazione).</p>
+            <h4 className="font-bold text-gray-800">Fase 2: Approfondimenti</h4>
+            <p className="text-sm mt-1">Puoi eseguire liberamente i test di approfondimento sull'evento causa e sulla reazione al torto: <strong>Indietro nel Tempo (Grande Indagine)</strong>, <strong>Test Quale Giorno</strong> e <strong>Testimone &amp; Torto</strong>.</p>
         </div>
         <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-            <h4 className="font-bold text-gray-800">Fase 3: Check-in e nuovo ciclo (in preparazione)</h4>
-            <p className="text-sm mt-1">Prevista dal giorno 15 e accessibile anche dopo il giorno 21 del percorso, per verificare l'evoluzione delle aree distoniche e, se lo desideri, avviare un nuovo ciclo di osservazione personale.</p>
+            <h4 className="font-bold text-gray-800">Fase 3: Check-in e nuovo ciclo (anteprima non attiva)</h4>
+            <p className="text-sm mt-1">Sezione prevista per i check-in periodici dal giorno 15 e dopo il giorno 21 del percorso (attualmente in anteprima non operativa).</p>
         </div>
       </div>
       
-      <p className="text-gray-700 mt-4 font-semibold">Al termine, avrai una mappa chiara delle dinamiche emotive emerse, da osservare con spirito di autoconoscenza.</p>
+      <p className="text-gray-700 mt-4 font-semibold">Al termine, avrai spunti di esplorazione personale sulle dinamiche emotive emerse secondo il modello DAB, senza valore di diagnosi, prova certa di una causa o promessa di risoluzione.</p>
       
       <InfoBox className="mt-6 border-indigo-500 bg-indigo-50 text-indigo-900">
         <h3 className="font-bold flex items-center gap-2">
@@ -59,7 +59,7 @@ const Introduzione: React.FC<ScreenProps> = ({ setPage }) => {
 
       <InfoBox variant="warning" className="!my-0 mt-6">
         <h3 className="font-bold">Attenzione:</h3>
-        <p className="text-sm">Questa applicazione è uno strumento di auto-esplorazione e non sostituisce in alcun modo il parere di un medico o di un professionista della salute mentale. I risultati sono da intendersi come spunti di riflessione personale.</p>
+        <p className="text-sm">Questa applicazione è uno strumento di esplorazione personale secondo il modello DAB: non costituisce una diagnosi medica o psicologica, non fornisce prove certe di una causa e non garantisce la risoluzione di alcun disagio o sintomo. Per sintomi e malattie rivolgiti sempre al medico.</p>
       </InfoBox>
 
       <div className="mt-8 text-right">

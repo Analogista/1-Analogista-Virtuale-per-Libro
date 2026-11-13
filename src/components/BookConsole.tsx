@@ -265,7 +265,7 @@ export const BookConsole: React.FC<BookConsoleProps> = ({ onSelectTest, complete
           {isPhase3Open && (
             <div className="px-3.5 pb-3.5 sm:px-4 sm:pb-4 pt-1 border-t border-slate-200 animate-fadeIn">
               <p className="text-xs text-slate-600 leading-relaxed mb-3">
-                <strong>Fase 3 — Check-in dal giorno 15 e anche dopo il giorno 21:</strong> Per verificare lo stato delle distonie ed eventualmente avviare un nuovo ciclo di riequilibrio emotivo.
+                <strong>Fase 3 — Check-in dal giorno 15 e anche dopo il giorno 21:</strong> Anteprima non attiva dedicata a futuri momenti di auto-osservazione personale secondo il modello DAB (non costituisce diagnosi, prova certa di una causa né promessa di risoluzione).
               </p>
 
               <div className="p-3 rounded-lg bg-slate-50 border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">

@@ -6,6 +6,11 @@ import CameraView from '../components/CameraView';
 import { AdvancedVoiceService, SessionGuard } from '../services/AdvancedVoiceService';
 import InfoBox from '../components/InfoBox';
 import TestControls from '../components/TestControls';
+import {
+  runWitnessAndTortoInvestigation,
+  getTortoReactionText,
+  getTortoCoherenceText,
+} from '../utils/witnessInvestigation';
 
 const seasons = {
   Primavera: ['Marzo', 'Aprile', 'Maggio'],
@@ -150,7 +155,11 @@ const IndagineSingola: React.FC<ScreenProps> = ({ setPage }) => {
       setUserData(prev => ({
         ...prev,
         timeLine: timeline,
-        completedTests: { ...prev.completedTests, timeLine: true }
+        completedTests: {
+          ...prev.completedTests,
+          timeLine: true,
+          timeLineFromGrandeIndagine: true,
+        }
       }));
       await voiceService.speak(`Ok, l'evento è accaduto a ${foundAge} anni. Ora cerchiamo la stagione.`);
       if (!await guard.delay(500)) return;
@@ -202,105 +211,91 @@ const IndagineSingola: React.FC<ScreenProps> = ({ setPage }) => {
       setUserData(prev => ({
         ...prev,
         giornoEvento: foundDate,
-        completedTests: { ...prev.completedTests, qualeGiorno: true }
+        completedTests: {
+          ...prev.completedTests,
+          qualeGiorno: true,
+          qualeGiornoFromGrandeIndagine: true,
+        }
       }));
       await voiceService.speak(`Avevi ${foundAge} anni, il ${foundDate}. Ora cerchiamo il testimone.`);
       if (!await guard.delay(500)) return;
 
-      // 6. Genere testimone
-      const resMale = await askWithStrictRepeat('Era un uomo? Sì o no, attendo risposta.', guard);
-      if (guard.isCancelled()) return;
-      if (resMale === 'NON_RILEVATO') { setStatus('IDLE'); setMessage('Ricerca interrotta.'); return; }
+      // 6-8. Testimone Chiave e Reazione al Torto (blocco condiviso)
+      const outcome = await runWitnessAndTortoInvestigation({
+        voiceService,
+        guard,
+        age: String(foundAge),
+        onStatusMessage: setMessage,
+      });
 
-      const maleCandidates = ['Tuo padre', 'Tuo nonno', 'Tuo zio', 'Tuo fratello', 'Tuo cugino', 'Un insegnante', 'Un amico'];
-      const femaleCandidates = ['Tua madre', 'Tua nonna', 'Tua zia', 'Tua sorella', 'Tua cugina', "Un'insegnante", "Un'amica"];
-      const ambiguous = ['Tuo nonno', 'Tuo zio', 'Tuo cugino', 'Tua nonna', 'Tua zia', 'Tua cugina'];
-      
-      let candidates: string[];
-      if (resMale === 'SI') {
-        candidates = maleCandidates;
-      } else {
-        const resFemale = await askWithStrictRepeat('Era una donna? Sì o no, attendo risposta.', guard);
-        if (guard.isCancelled()) return;
-        if (resFemale === 'NON_RILEVATO') { setStatus('IDLE'); setMessage('Ricerca interrotta.'); return; }
-        if (resFemale !== 'SI') {
-          setSummary(prev => ({ ...prev, witness: 'Testimone non identificato' }));
-          setUserData(prev => ({
-            ...prev,
-            testimoneChiave: 'Testimone non identificato',
-            completedTests: {
-              ...prev.completedTests,
-              timeLine: true,
-              qualeGiorno: true,
-              testimone: true,
-              indagineSingola: true
-            }
-          }));
-          setStatus('SUCCESS');
-          setMessage('Testimone non identificato.');
-          await voiceService.speak('Testimone non identificato. Indagine conclusa.');
-          return;
-        }
-        candidates = femaleCandidates;
+      if (outcome.status === 'CANCELLED') return;
+      if (outcome.status === 'INTERRUPTED') {
+        setStatus('IDLE');
+        setMessage(outcome.reason);
+        return;
       }
 
-      // 7. Ricerca figura specifica
-      let witness = 'Non identificato';
-      for (const candidate of candidates) {
-        const res = await askWithStrictRepeat(`Era ${candidate}? Sì o No, attendo risposta.`, guard);
-        if (guard.isCancelled()) return;
-        if (res === 'NON_RILEVATO') { setStatus('IDLE'); setMessage('Ricerca interrotta.'); return; }
-        if (res === 'SI') {
-          witness = candidate;
-          if (ambiguous.includes(candidate)) {
-            const sideRes = await askWithStrictRepeat('Da parte di papà? Sì o No, attendo risposta.', guard);
-            if (guard.isCancelled()) return;
-            if (sideRes === 'SI') witness += ' (Paterno)';
-            else if (sideRes === 'NO') witness += ' (Materno)';
-          }
-          break;
-        }
+      if (outcome.status === 'NOT_IDENTIFIED') {
+        setSummary(prev => ({
+          ...prev,
+          witness: 'non identificato',
+          justification: undefined,
+          shouldJustify: undefined,
+          giustificatoRaw: undefined,
+          dovrebbeRaw: undefined,
+        }));
+        setUserData(prev => ({
+          ...prev,
+          testimoneChiave: 'non identificato',
+          giustificatoTorto: '',
+          avreiDovutoGiustificare: '',
+          completedTests: {
+            ...prev.completedTests,
+            timeLine: true,
+            timeLineFromGrandeIndagine: true,
+            qualeGiorno: true,
+            qualeGiornoFromGrandeIndagine: true,
+            testimone: true,
+            testimoneFromGrandeIndagine: true,
+            indagineSingola: true,
+          },
+        }));
+        setStatus('SUCCESS');
+        setMessage('Testimone non identificato.');
+        await voiceService.speak('Testimone non identificato. Indagine conclusa.');
+        return;
       }
 
-      setSummary(prev => ({ ...prev, witness }));
-
-      // 8. Domande sulla giustificazione del torto
-      const witnessRef = witness !== 'Non identificato' ? `da ${witness}` : "in quell'evento";
-      const resJust = await askWithStrictRepeat(`Caro inconscio, hai giustificato il torto ricevuto ${witnessRef}? Sì o no, attendo risposta.`, guard);
-      if (guard.isCancelled()) return;
-      if (resJust === 'NON_RILEVATO') { setStatus('IDLE'); setMessage('Ricerca interrotta.'); return; }
-
-      if (!await guard.delay(800)) return;
-      const resShouldJust = await askWithStrictRepeat(`Caro inconscio, avresti dovuto giustificare il torto ricevuto ${witnessRef}? Sì o no, attendo risposta.`, guard);
-      if (guard.isCancelled()) return;
-      if (resShouldJust === 'NON_RILEVATO') { setStatus('IDLE'); setMessage('Ricerca interrotta.'); return; }
-      
       setSummary(prev => ({
         ...prev,
-        justification: resJust === 'SI' ? 'Giustificato (SÌ)' : 'Non Giustificato (NO)',
-        shouldJustify: resShouldJust === 'SI' ? 'SÌ' : 'NO',
-        giustificatoRaw: resJust,
-        dovrebbeRaw: resShouldJust
+        witness: outcome.witness,
+        justification: outcome.giustificato === 'SI' ? 'Giustificato (SÌ)' : 'Non Giustificato (NO)',
+        shouldJustify: outcome.avreiDovuto === 'SI' ? 'SÌ' : 'NO',
+        giustificatoRaw: outcome.giustificato,
+        dovrebbeRaw: outcome.avreiDovuto,
       }));
 
-      // Salvataggio stato completo
+      // Salvataggio stato completo (solo ruolo pulito e risposte torto)
       setUserData(prev => ({
         ...prev,
-        testimoneChiave: witness,
-        giustificatoTorto: resJust,
-        avreiDovutoGiustificare: resShouldJust,
+        testimoneChiave: outcome.witness,
+        giustificatoTorto: outcome.giustificato,
+        avreiDovutoGiustificare: outcome.avreiDovuto,
         completedTests: {
           ...prev.completedTests,
           timeLine: true,
+          timeLineFromGrandeIndagine: true,
           qualeGiorno: true,
+          qualeGiornoFromGrandeIndagine: true,
           testimone: true,
-          indagineSingola: true
-        }
+          testimoneFromGrandeIndagine: true,
+          indagineSingola: true,
+        },
       }));
 
       setStatus('SUCCESS');
-      setMessage(`Indagine completata con successo! Età: ${foundAge} anni; Data: ${foundDate}; Testimone: ${witness}; Torto: ${resJust === 'SI' ? 'Giustificato' : 'Non Giustificato'}.`);
-      await voiceService.speak(`Indagine completata con successo. Testimone identificato: ${witness}. Puoi consultare l'esito.`);
+      setMessage(`Indagine completata con successo! Età: ${foundAge} anni; Data: ${foundDate}; Testimone: ${outcome.witness}; Torto: ${outcome.giustificato === 'SI' ? 'Giustificato' : 'Non Giustificato'}.`);
+      await voiceService.speak(`Indagine completata con successo. Testimone identificato: ${outcome.witness}. Puoi consultare l'esito.`);
     } catch (error) {
       console.error(error);
       setStatus('ERROR');
@@ -385,19 +380,27 @@ const IndagineSingola: React.FC<ScreenProps> = ({ setPage }) => {
             </div>
             <div className="p-3 bg-white rounded-xl border border-indigo-100 shadow-sm">
               <span className="text-[10px] uppercase font-bold text-slate-500">3. Testimone Chiave</span>
-              <p className="text-lg font-bold text-indigo-900">{summary.witness || 'Non identificato'}</p>
+              <p className="text-lg font-bold text-indigo-900">
+                {summary.witness === 'non identificato' ? 'Testimone non identificato' : summary.witness || 'Non identificato'}
+              </p>
             </div>
             <div className="p-3 bg-white rounded-xl border border-indigo-100 shadow-sm">
               <span className="text-[10px] uppercase font-bold text-slate-500">4. Reazione al Torto</span>
-              <p className="text-base font-bold text-indigo-900">Hai giustificato: {summary.justification || '-'}</p>
-              <p className="text-sm font-semibold text-indigo-800 mt-1">Avresti dovuto: {summary.shouldJustify || '-'}</p>
-              {(summary.giustificatoRaw === 'SI' || summary.giustificatoRaw === 'NO') &&
-               (summary.dovrebbeRaw === 'SI' || summary.dovrebbeRaw === 'NO') && (
-                <p className="text-xs italic text-slate-600 mt-1.5">
-                  {summary.giustificatoRaw === summary.dovrebbeRaw
-                    ? 'Risposta coerente.'
-                    : "Secondo il modello DAB, la discordanza tra le due risposte indica un possibile conflitto: è un'ipotesi da osservare, non una prova."}
-                </p>
+              {summary.witness === 'non identificato' ? (
+                <p className="text-sm text-slate-600 mt-1">Domande sul torto non poste (testimone non identificato).</p>
+              ) : (
+                <>
+                  <p className="text-base font-bold text-indigo-900">Hai giustificato: {summary.justification || '-'}</p>
+                  <p className="text-sm font-semibold text-indigo-800 mt-1">Avresti dovuto: {summary.shouldJustify || '-'}</p>
+                  {(summary.giustificatoRaw === 'SI' || summary.giustificatoRaw === 'NO') && (
+                    <p className="text-xs text-slate-700 mt-1">{getTortoReactionText(summary.giustificatoRaw)}</p>
+                  )}
+                  {getTortoCoherenceText(summary.giustificatoRaw, summary.dovrebbeRaw) && (
+                    <p className="text-xs italic text-slate-700 mt-1.5 font-medium">
+                      {getTortoCoherenceText(summary.giustificatoRaw, summary.dovrebbeRaw)}
+                    </p>
+                  )}
+                </>
               )}
             </div>
           </div>

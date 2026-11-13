@@ -9,6 +9,7 @@ import { useNavigate } from 'react-router-dom';
 import { jsPDF } from 'jspdf';
 import { ANALOGISTA_KNOWLEDGE } from '../utils/knowledgeBase';
 import { generateAnalogicalAnalysis } from '../utils/AnalysisEngine';
+import { getTortoReactionText, getTortoCoherenceText } from '../utils/witnessInvestigation';
 import { db } from '../services/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { handleFirestoreError, OperationType } from '../utils/firestore';
@@ -154,7 +155,7 @@ const Risultati: React.FC<ScreenProps> = ({ setPage }) => {
   const sigilliMeta: { key: keyof NonNullable<typeof userData.sigilli>; label: string }[] = [
     { key: 'colpa', label: 'Sensi di colpa' },
     { key: 'abbandono', label: "Paura dell'abbandono" },
-    { key: 'giudizio', label: 'Timore del giudizio degli altri' },
+    { key: 'giudizio', label: 'Timore del giudizio' },
     { key: 'disistima', label: 'Mancanza di autostima' },
   ];
 
@@ -308,6 +309,7 @@ const Risultati: React.FC<ScreenProps> = ({ setPage }) => {
             - NON CITARE MAI NOMI DI AUTORI.
             - NON INSERIRE SIMBOLI VISIVI.
             - Scrivi in modo discorsivo e fluido.
+            - Non formulare diagnosi cliniche, non presentare gli esiti come prove certe di una causa e non promettere risoluzioni o superamento delle distonie: proponi una lettura analogica di esplorazione personale secondo il modello DAB.
             
             DATI UTENTE:
             - Nome: ${userData.nome}
@@ -316,7 +318,7 @@ const Risultati: React.FC<ScreenProps> = ({ setPage }) => {
             - Sigilli emersi (SÌ): ${emergedSigilli.length > 0 ? emergedSigilli.join(', ') : 'Nessuno'}
             - Punto Distonico: ${userData.puntoDistonicoFinale || 'Nessuno identificato'}
             - Evento Causa: ${userData.timeLine.etaEventoCausa} anni (Testimone: ${userData.testimoneChiave}).
-            - Reazione al Torto (hai giustificato): ${userData.giustificatoTorto} (SI = Ha accettato il giudizio senza dire la propria. Meccanismo: DISSOCIAZIONE; NO = Ha reagito, la colpa è rimasta all'esterno. Meccanismo: SCISSIONE).
+            - Reazione al Torto (hai giustificato): ${userData.giustificatoTorto} (SI = Ha accettato il giudizio senza dire la propria. Meccanismo: DISSOCIAZIONE; NO = Ha reagito, la colpa è dell'altro e la rabbia resta all'esterno. Meccanismo: SCISSIONE).
             - Avresti dovuto giustificare: ${userData.avreiDovutoGiustificare || 'Non rilevato'}.
             
             ${chatContext}
@@ -354,22 +356,10 @@ const Risultati: React.FC<ScreenProps> = ({ setPage }) => {
       return "";
   }
 
-  const getReazioneDetailedText = () => {
-      if (userData.giustificatoTorto === 'SI') return "Ha accettato il giudizio senza dire la propria. Meccanismo: DISSOCIAZIONE.";
-      if (userData.giustificatoTorto === 'NO') return "Ha reagito, la colpa è rimasta all'esterno. Meccanismo: SCISSIONE.";
-      return "Dato non rilevato.";
-  };
+  const getReazioneDetailedText = () => getTortoReactionText(userData.giustificatoTorto);
 
-  const getCoherenceText = () => {
-      const g = userData.giustificatoTorto;
-      const d = userData.avreiDovutoGiustificare;
-      if ((g === 'SI' || g === 'NO') && (d === 'SI' || d === 'NO')) {
-          return g === d
-              ? "Risposta coerente."
-              : "Secondo il modello DAB, la discordanza tra le due risposte indica un possibile conflitto: è un'ipotesi da osservare, non una prova.";
-      }
-      return "";
-  };
+  const getCoherenceText = () =>
+    getTortoCoherenceText(userData.giustificatoTorto, userData.avreiDovutoGiustificare);
 
   const formatAnswerLabel = (val?: string) => {
       if (val === 'SI') return 'SÌ';
@@ -417,7 +407,7 @@ const Risultati: React.FC<ScreenProps> = ({ setPage }) => {
       addLine(`SIGILLO SU CUI LAVORARE: ${formatFirstDisistima(userData.sigilloFinale || 'Nessuno identificato')}`);
       addLine(`SIGILLI EMERSI (SÌ): ${emergedSigilli.length > 0 ? emergedSigilli.map(formatFirstDisistima).join(', ') : 'Nessun sigillo attivo rilevato'}`);
       addLine(`TIME LINE: Evento a ${userData.timeLine.etaEventoCausa} anni con ${userData.testimoneChiave}`);
-      addLine(`REAZIONE (Hai giustificato): ${userData.giustificatoTorto === 'SI' ? 'SÌ — Ha accettato il giudizio senza dire la propria. Meccanismo: DISSOCIAZIONE.' : userData.giustificatoTorto === 'NO' ? "NO — Ha reagito, la colpa è rimasta all'esterno. Meccanismo: SCISSIONE." : 'Dato non rilevato.'}`);
+      addLine(`REAZIONE (Hai giustificato): ${userData.giustificatoTorto === 'SI' ? 'SÌ — Ha accettato il giudizio senza dire la propria. Meccanismo: DISSOCIAZIONE.' : userData.giustificatoTorto === 'NO' ? "NO — Ha reagito, la colpa è dell'altro e la rabbia resta all'esterno. Meccanismo: SCISSIONE." : 'Dato non rilevato.'}`);
       addLine(`AVRESTI DOVUTO GIUSTIFICARE: ${formatAnswerLabel(userData.avreiDovutoGiustificare)}`);
       const pdfCoherence = getCoherenceText();
       if (pdfCoherence) {
@@ -680,7 +670,7 @@ const Risultati: React.FC<ScreenProps> = ({ setPage }) => {
 
         <div className="md:col-span-2">
             <ResultCard title="⏳ Time Line">
-                <p><strong>Lettura Temporale:</strong> {userData.timeLine.diagnosi}</p>
+                <p><strong>Lettura analogica:</strong> {userData.timeLine.diagnosi}</p>
                 {userData.timeLine.PU && (
                      <TimeLineGraph 
                         age={parseInt(userData.eta)} 

@@ -80,6 +80,9 @@ export interface UserData {
       testimone?: boolean;
       qualeGiorno?: boolean;
       indagineSingola?: boolean;
+      timeLineFromGrandeIndagine?: boolean;
+      qualeGiornoFromGrandeIndagine?: boolean;
+      testimoneFromGrandeIndagine?: boolean;
   };
   aiSummary?: string;
   hasContactedMax?: boolean;

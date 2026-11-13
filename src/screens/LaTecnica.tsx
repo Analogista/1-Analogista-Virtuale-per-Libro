@@ -10,10 +10,24 @@ const LaTecnica: React.FC<ScreenProps> = ({ setPage }) => {
     <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6">
       <div className="flex justify-between items-start mb-4">
         <div>
-          <h2 className="text-[20px] font-bold text-gray-800">3) La Tecnica</h2>
-          <h3 className="h-[57px] w-[196px] text-[14px] leading-[21px] font-semibold text-[#0e62e3]">Come funziona questa tecnica.</h3>
+          <h2 className="text-2xl font-bold text-gray-800">3) Come Posizionarsi</h2>
+          <h3 className="text-sm font-semibold text-blue-700">Postura, inquadratura corretta e avvertenze di sicurezza</h3>
         </div>
         <button onClick={() => setPage(0)} className="text-sm text-blue-600 hover:underline flex-shrink-0 ml-4 mt-1">&larr; Torna alla home</button>
+      </div>
+
+      {/* AVVERTENZE DI SICUREZZA */}
+      <div className="mb-6 p-4 sm:p-5 rounded-xl bg-amber-50 border-2 border-amber-300 text-amber-950 shadow-sm space-y-2">
+        <h4 className="font-bold text-base flex items-center gap-2 text-amber-900">
+          <span>⚠️</span> Avvertenze di sicurezza prima di iniziare
+        </h4>
+        <ul className="list-disc list-inside text-sm space-y-1.5 text-amber-950">
+          <li>Esegui i test <strong>in piedi</strong>, vicino a una <strong>parete</strong> o con una <strong>sedia alle spalle</strong> per maggiore appoggio e stabilità.</li>
+          <li><strong>Non eseguire i test in caso di vertigini o problemi di equilibrio.</strong></li>
+          <li>Esegui i test <strong>solo su di te</strong>, mai su altre persone.</li>
+          <li>Puoi <strong>fermarti quando vuoi</strong> in qualsiasi momento della sessione.</li>
+          <li><strong>Sintomi e malattie vanno sempre portati al medico</strong>; il test <strong>non è una diagnosi</strong>.</li>
+        </ul>
       </div>
 
       <div className="space-y-4 text-gray-700">

@@ -43,7 +43,7 @@ export function generateAnalogicalAnalysis(userData: UserData): AnalysisSummary 
   let areaConflitto: string;
   const distonicoUpper = (puntoDistonicoFinale || '').toUpperCase();
   if (distonicoUpper.includes('ACQUISITA')) {
-    areaConflitto = "Sfera Famiglia Acquisita: la tensione analogica si concentra sulle dinamiche del nucleo familiare acquisito (partner, figli o relazioni familiari attuali).";
+    areaConflitto = "Sfera Famiglia Acquisita: la tensione analogica si concentra sulle dinamiche della famiglia acquisita (matrimonio o convivenza: partner, eventuali figli, suoceri e altri parenti acquisiti).";
   } else if (distonicoUpper.includes('FAMIGLIA')) {
     areaConflitto = "Sfera Famiglia d'Origine: la tensione analogica si concentra sulle figure genitoriali o su risentimenti ed imprinting legati al nucleo d'origine.";
   } else if (distonicoUpper.includes('SENTIMENTALI') || distonicoUpper.includes('AFFETTIV')) {
@@ -79,7 +79,7 @@ export function generateAnalogicalAnalysis(userData: UserData): AnalysisSummary 
       imprintingTimeline += ` con coinvolgimento del Testimone Chiave (${testimoneChiave})`;
     }
     if (timeLine.diagnosi) {
-      imprintingTimeline += `. Lettura Temporale: ${timeLine.diagnosi.toUpperCase()}`;
+      imprintingTimeline += `. Lettura analogica: ${timeLine.diagnosi.toUpperCase()}`;
     }
   } else {
     imprintingTimeline = "Time Line non completata.";
@@ -90,9 +90,18 @@ export function generateAnalogicalAnalysis(userData: UserData): AnalysisSummary 
   if (giustificatoTorto === 'SI') {
     meccanismoReattivo = "Ha accettato il giudizio senza dire la propria. Meccanismo: DISSOCIAZIONE.";
   } else if (giustificatoTorto === 'NO') {
-    meccanismoReattivo = "Ha reagito, la colpa è rimasta all'esterno. Meccanismo: SCISSIONE.";
+    meccanismoReattivo = "Ha reagito, la colpa è dell'altro e la rabbia resta all'esterno. Meccanismo: SCISSIONE.";
   } else {
     meccanismoReattivo = "Reazione al torto non ancora definita.";
+  }
+
+  const hasTortoConflict =
+    (giustificatoTorto === 'SI' || giustificatoTorto === 'NO') &&
+    (userData.avreiDovutoGiustificare === 'SI' || userData.avreiDovutoGiustificare === 'NO') &&
+    giustificatoTorto !== userData.avreiDovutoGiustificare;
+
+  if (hasTortoConflict) {
+    meccanismoReattivo += " Conflitto rilevato (discordanza tra le due risposte): si suggerisce di ripetere il test in un altro giorno, partendo dal Test del Nome.";
   }
 
   // 6. Sintesi Completa Incrociata
@@ -102,7 +111,7 @@ Il disagio espresso riguardo a ${prob} trova la sua matrice nell'area ${distonic
 
 La tua modalità elettiva è caratterizzata dalla ${faseInconscia.split('.')[0]}.
 ${imprintingTimeline}.
-Attraverso il meccanismo di ${giustificatoTorto === 'SI' ? 'DISSOCIAZIONE (ha accettato il giudizio senza dire la propria)' : giustificatoTorto === 'NO' ? "SCISSIONE (ha reagito, la colpa è rimasta all'esterno)" : 'protezione emotiva'}, l'inconscio ha preservato il tuo equilibrio originario, creando tuttavia l'automatismo che oggi riattiva la tensione nei momenti critici.
+Attraverso il meccanismo di ${giustificatoTorto === 'SI' ? 'DISSOCIAZIONE (ha accettato il giudizio senza dire la propria)' : giustificatoTorto === 'NO' ? "SCISSIONE (ha reagito, la colpa è dell'altro e la rabbia resta all'esterno)" : 'protezione emotiva'}, l'inconscio ha preservato il tuo equilibrio originario, creando tuttavia l'automatismo che oggi riattiva la tensione nei momenti critici.
   `.trim();
 
   // 7. Consiglio Analogico Riconciliativo

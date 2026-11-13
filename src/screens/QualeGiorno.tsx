@@ -31,14 +31,21 @@ const QualeGiorno: React.FC<ScreenProps> = ({ setPage }) => {
   const [status, setStatus] = useState<'IDLE' | 'TESTING' | 'SUCCESS' | 'ERROR'>('IDLE');
   const [message, setMessage] = useState('Pronto a trovare la data e il giorno esatto dell\'evento?');
   const [isCameraReady, setIsCameraReady] = useState(false);
+  const [reusePromptDismissed, setReusePromptDismissed] = useState(false);
   const [foundDate, setFoundDate] = useState<string>(userData.giornoEvento || '');
         
   const videoRef = useRef<HTMLVideoElement>(null);
   const voiceService = useMemo(() => new AdvancedVoiceService(), []);
+  const guardRef = useRef<SessionGuard | null>(null);
 
   const { testimoneChiave, timeLine } = userData;
 
-  useEffect(() => { return () => voiceService.cancel(); }, [voiceService]);
+  useEffect(() => {
+    return () => {
+      guardRef.current?.cancel();
+      voiceService.cancel();
+    };
+  }, [voiceService]);
 
   const handleCameraReady = () => {
     if (videoRef.current) {
@@ -48,14 +55,23 @@ const QualeGiorno: React.FC<ScreenProps> = ({ setPage }) => {
   };
 
   const handleRepeat = () => {
+    guardRef.current?.cancel();
     voiceService.cancel();
     setStatus('IDLE');
+    setReusePromptDismissed(true);
     setFoundDate('');
     setMessage('Pronto a trovare il giorno esatto?');
   };
 
+  const handleReuseExisting = () => {
+    setFoundDate(userData.giornoEvento);
+    setMessage(`Dato riutilizzato: ${userData.giornoEvento}.`);
+    setStatus('SUCCESS');
+  };
+
   const handleExit = () => {
     if (window.confirm("Sei sicuro di voler uscire? La voce e il test verranno interrotti.")) {
+        guardRef.current?.cancel();
         voiceService.cancel();
         setPage(0);
     }
@@ -66,6 +82,10 @@ const QualeGiorno: React.FC<ScreenProps> = ({ setPage }) => {
     let foundSeason: SeasonKey | null = null;
     let foundMonth: string | null = null;
 
+    guardRef.current?.cancel();
+    const guard = new SessionGuard(() => voiceService.cancel());
+    guardRef.current = guard;
+
     try {
       const introText = testimoneChiave && timeLine?.etaEventoCausa
         ? `Adesso individueremo il periodo esatto in cui accadde l'evento con ${testimoneChiave} all'età di ${timeLine.etaEventoCausa} anni.`
@@ -73,12 +93,18 @@ const QualeGiorno: React.FC<ScreenProps> = ({ setPage }) => {
 
       setMessage("Iniziamo la ricerca della data...");
       await voiceService.speak(introText);
+      if (guard.isCancelled()) return;
       
       // 1. Stagione
       for (const season of Object.keys(seasons) as SeasonKey[]) {
         setMessage(`L'evento accadde in ${season}? (Sì/No)`);
         const res = await voiceService.askQuestionWithSingleRetry(`Era in ${season}? Sì o no, attendo risposta.`);
         if (guard.isCancelled()) return;
+        if (res.response === 'NON_RILEVATO') {
+          setMessage('Ricerca interrotta: risposta non rilevata.');
+          setStatus('IDLE');
+          return;
+        }
         if (res.response === 'SI') {
           foundSeason = season;
           break;
@@ -92,6 +118,11 @@ const QualeGiorno: React.FC<ScreenProps> = ({ setPage }) => {
         setMessage(`Era nel mese di ${month}? (Sì/No)`);
         const res = await voiceService.askQuestionWithSingleRetry(`Era nel mese di ${month}? Sì o no, attendo risposta.`);
         if (guard.isCancelled()) return;
+        if (res.response === 'NON_RILEVATO') {
+          setMessage('Ricerca interrotta: risposta non rilevata.');
+          setStatus('IDLE');
+          return;
+        }
         if (res.response === 'SI') {
           foundMonth = month;
           break;
@@ -103,7 +134,6 @@ const QualeGiorno: React.FC<ScreenProps> = ({ setPage }) => {
       // 3. Giorno (Ricerca Binaria)
       let lowerBound = 1;
       let upperBound = daysInMonth[foundMonth];
-      const guard = new SessionGuard(() => voiceService.cancel());
       
       while (upperBound > lowerBound) {
         const midPoint = Math.floor(lowerBound + (upperBound - lowerBound) / 2);
@@ -133,13 +163,19 @@ const QualeGiorno: React.FC<ScreenProps> = ({ setPage }) => {
       setUserData(prev => ({
         ...prev,
         giornoEvento: finalDate,
-        completedTests: { ...prev.completedTests, qualeGiorno: true }
+        completedTests: {
+          ...prev.completedTests,
+          qualeGiorno: true,
+          qualeGiornoFromGrandeIndagine: false,
+        }
       }));
       setStatus('SUCCESS');
     } catch {
-      if (status !== 'IDLE') setMessage("Test interrotto.");
+      if (!guard.isCancelled()) setMessage("Test interrotto.");
     }
   };
+
+  const hasExistingDate = Boolean(userData.giornoEvento);
 
   return (
     <div className="bg-white rounded-2xl shadow-xl p-4 sm:p-6 pb-24 relative border border-slate-100">
@@ -151,7 +187,7 @@ const QualeGiorno: React.FC<ScreenProps> = ({ setPage }) => {
           <h2 className="text-2xl font-serif font-black text-gray-900">Test Quale Giorno</h2>
           <h3 className="text-sm font-medium text-gray-600">Individuazione della data esatta (Stagione, Mese, Giorno)</h3>
         </div>
-        <button onClick={handleExit} className="text-xs uppercase tracking-widest font-bold text-gray-500 hover:text-blue-600 border border-gray-200 px-3 py-1.5 rounded-lg transition">
+        <button onClick={handleExit} data-keep-voice="true" className="text-xs uppercase tracking-widest font-bold text-gray-500 hover:text-blue-600 border border-gray-200 px-3 py-1.5 rounded-lg transition">
           &larr; Torna alla Home
         </button>
       </div>
@@ -163,6 +199,35 @@ const QualeGiorno: React.FC<ScreenProps> = ({ setPage }) => {
           Questo test consente di dialogare con l'inconscio per circoscrivere con precisione stagionale e giornaliera l'accaduto dell'evento causa significativo.
         </p>
       </InfoBox>
+
+      {status === 'IDLE' && hasExistingDate && !reusePromptDismissed && (
+        <div className="my-5 p-4 sm:p-5 rounded-2xl bg-amber-50 border-2 border-amber-200 shadow-sm space-y-3">
+          <div>
+            <span className="inline-block text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-white text-amber-800 border border-amber-200">
+              {userData.completedTests?.qualeGiornoFromGrandeIndagine ? 'Dato da Grande Indagine' : 'Dato già presente'}
+            </span>
+            <h4 className="font-serif font-bold text-lg text-amber-950 mt-1">
+              Data già registrata: {userData.giornoEvento}
+            </h4>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <button
+              type="button"
+              onClick={handleReuseExisting}
+              className="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-bold py-3 px-4 rounded-xl shadow transition text-sm"
+            >
+              ✓ Riutilizza dato esistente
+            </button>
+            <button
+              type="button"
+              onClick={() => { setReusePromptDismissed(true); setFoundDate(''); }}
+              className="flex-1 bg-white hover:bg-slate-100 text-slate-800 font-bold py-3 px-4 rounded-xl border border-slate-300 transition text-sm"
+            >
+              🔄 Rifai il test
+            </button>
+          </div>
+        </div>
+      )}
       
       <div className="my-6">
         <CameraView videoRef={videoRef} onReady={handleCameraReady} showCalibrationButton={false} />
@@ -201,7 +266,7 @@ const QualeGiorno: React.FC<ScreenProps> = ({ setPage }) => {
         </div>
       )}
 
-      {status !== 'SUCCESS' && (
+      {status !== 'SUCCESS' && (!hasExistingDate || reusePromptDismissed) && (
         <div className="mt-8 text-center">
           <button 
             onClick={startTest} 

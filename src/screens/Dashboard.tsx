@@ -50,13 +50,13 @@ const tests: TestItem[] = [
   { id: 'tap', title: 'Test T.A.P. (Asta, Cerchio, Triangolo)', description: 'Tipologia Analogica della Personalità e distonia di base', component: TestTAP, icon: '🔺' },
   { id: 'induttore', title: 'Test Induttore', description: 'Mano destra e sinistra: Libertà vs Sogno', component: TestInduttore, icon: '👋' },
   { id: 'nome', title: 'Test del Nome', description: 'Verifica del riconoscimento dell\'identità da parte dell\'inconscio', component: TestNome, icon: '🆔' },
-  { id: 'puntiDistonici', title: 'Test Punti Distonici', description: 'Indagine sulle 5 aree: famiglia d\'origine, acquisita, affetti, passioni, realizzazione', component: TestPuntiDistonici, icon: '🎯' },
-  { id: 'sigilli', title: 'Test Sigilli e Vincoli', description: 'Colpa, abbandono, giudizio, mancanza di autostima', component: TestSigilliVincoli, icon: '🔐' },
+  { id: 'puntiDistonici', title: 'Test Punti Distonici', description: 'Indagine sulle 5 aree: famiglia d\'origine, famiglia acquisita, relazioni sentimentali e affettive, relazioni passionali e sessuali, autorealizzazione, hobby e lavoro', component: TestPuntiDistonici, icon: '🎯' },
+  { id: 'sigilli', title: 'Test Sigilli e Vincoli', description: 'Sensi di colpa, paura dell\'abbandono, timore del giudizio, mancanza di autostima', component: TestSigilliVincoli, icon: '🔐' },
 
   // Linea del Tempo & Indagini nel Tempo
   { id: 'indagineSingola', title: 'Indietro nel Tempo (Grande Indagine)', description: 'Ciclo completo: Età, Giorno esatto, Testimone e Torto', component: IndagineSingola, icon: '⏳' },
   { id: 'qualeGiorno', title: 'Test Quale Giorno', description: 'Ricerca autonoma della stagione, mese e giorno dell\'evento', component: QualeGiorno, icon: '📅' },
-  { id: 'testimone', title: 'Testimone Chiave', description: 'Ricerca della figura di riferimento collegata all\'evento causa', component: TestimoneChiave, icon: '👤' },
+  { id: 'testimone', title: 'Testimone & Torto', description: 'Ricerca del ruolo di riferimento e delle due domande sulla reazione al torto', component: TestimoneChiave, icon: '👤' },
 ];
 
 const Dashboard: React.FC = () => {
@@ -100,13 +100,13 @@ const Dashboard: React.FC = () => {
     }
   }, [setAudioEnabled, navigate]);
 
-  // Calcolo progressi test completati
-  const actionableTests = tests.filter(t => !t.isInfo && t.id !== 'chiSei');
+  // Calcolo progressi test singoli (esclusi informativi, I Tuoi Dati e Calibrazione preparatoria)
+  const actionableTests = tests.filter(t => !t.isInfo && t.id !== 'chiSei' && t.id !== 'calibrazione');
   const completedCount = actionableTests.reduce((acc, t) => {
     return userData.completedTests?.[t.id] ? acc + 1 : acc;
-  }, 0) + (userData.completedTests?.chiSei ? 1 : 0);
-  const totalCount = actionableTests.length + 1;
-  const progressPercent = Math.min(100, Math.round((completedCount / totalCount) * 100));
+  }, 0);
+  const totalCount = actionableTests.length;
+  const progressPercent = totalCount > 0 ? Math.min(100, Math.round((completedCount / totalCount) * 100)) : 0;
 
   if (activeTest) {
     const current = tests.find(t => t.id === activeTest);
@@ -203,10 +203,10 @@ const Dashboard: React.FC = () => {
         </p>
         <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 sm:p-3.5 text-xs text-slate-600 leading-relaxed space-y-1.5">
           <p>
-            <strong>Come usarlo con il libro:</strong> Segui la lettura ed esegui le tre tappe della Consolle qui sotto. La Fotografia Iniziale (T0) misura le dinamiche emotive di partenza; gli Approfondimenti guidano la ricerca di eventi causa; i Check-in periodici misurano i progressi nel tempo.
+            <strong>Come usarlo con il libro:</strong> Segui la lettura ed esegui i test della Consolle qui sotto. La prima sezione raccoglie i 5 test di base; gli Approfondimenti permettono di esplorare gli eventi nel tempo. La fase di Check-in è attualmente in anteprima non attiva.
           </p>
           <p className="text-[11px] text-slate-500 italic">
-            Strumento di crescita personale e consapevolezza emotiva; non fornisce diagnosi nè terapie di tipo medico o clinico.
+            Strumento di esplorazione personale secondo il modello DAB: non fornisce diagnosi, prove certe di una causa né garanzie di risoluzione o superamento delle distonie.
           </p>
         </div>
       </div>
@@ -450,6 +450,9 @@ const Dashboard: React.FC = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {timelineTests.map(test => {
                   const isDone = userData.completedTests?.[test.id];
+                  const isFromGrandeIndagine = Boolean(
+                    isDone && userData.completedTests?.[`${test.id}FromGrandeIndagine`]
+                  );
                   return (
                     <button
                       key={test.id}
@@ -464,11 +467,17 @@ const Dashboard: React.FC = () => {
                         {test.icon}
                       </span>
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
                           <h4 className="font-serif font-bold text-sm sm:text-base text-gray-900 leading-tight">
                             {test.title}
                           </h4>
-                          {isDone && <span className="text-blue-600 text-lg font-bold ml-2">✓</span>}
+                          {isFromGrandeIndagine ? (
+                            <span className="text-[11px] font-bold text-blue-700 bg-blue-100 border border-blue-200 px-2 py-0.5 rounded-md whitespace-nowrap">
+                              ✓ da Grande Indagine
+                            </span>
+                          ) : isDone ? (
+                            <span className="text-blue-600 text-lg font-bold ml-2">✓</span>
+                          ) : null}
                         </div>
                         <p className="text-xs text-gray-600 mt-1 line-clamp-2">
                           {test.description}

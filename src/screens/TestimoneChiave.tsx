@@ -7,6 +7,11 @@ import { AdvancedVoiceService, SessionGuard } from '../services/AdvancedVoiceSer
 import InfoBox from '../components/InfoBox';
 import VideoAccordion from '../components/VideoAccordion';
 import TestControls from '../components/TestControls';
+import {
+  runWitnessAndTortoInvestigation,
+  getTortoReactionText,
+  getTortoCoherenceText,
+} from '../utils/witnessInvestigation';
 
 interface ScreenProps {
   setPage: (page: number | string) => void;
@@ -19,6 +24,7 @@ const TestimoneChiave: React.FC<ScreenProps> = ({ setPage }) => {
   const [message, setMessage] = useState('Premi "Inizia Calibrazione" per avviare la ricerca del testimone.');
   const [isCameraReady, setIsCameraReady] = useState(false);
   const [isCalibrated, setIsCalibrated] = useState(false);
+  const [reusePromptDismissed, setReusePromptDismissed] = useState(false);
   const [foundWitness, setFoundWitness] = useState<string>(userData.testimoneChiave || '');
   const [tortoResult, setTortoResult] = useState<{ giustificato?: string; avrebbeDovuto?: string }>({
     giustificato: userData.giustificatoTorto || undefined,
@@ -67,9 +73,20 @@ const TestimoneChiave: React.FC<ScreenProps> = ({ setPage }) => {
     voiceService.cancel();
     setStatus('IDLE');
     setIsCalibrated(false);
+    setReusePromptDismissed(true);
     setFoundWitness('');
     setTortoResult({});
-    setMessage('Pronto a scoprire il Testimone Chiave e la reazione al torto?');
+    setMessage('Pronto a scoprire Testimone & Torto?');
+  };
+
+  const handleReuseExisting = () => {
+    setFoundWitness(userData.testimoneChiave || 'non identificato');
+    setTortoResult({
+      giustificato: userData.giustificatoTorto || undefined,
+      avrebbeDovuto: userData.avreiDovutoGiustificare || undefined,
+    });
+    setMessage('Dato esistente confermato.');
+    setStatus('SUCCESS');
   };
 
   const handleExit = () => {
@@ -83,10 +100,6 @@ const TestimoneChiave: React.FC<ScreenProps> = ({ setPage }) => {
   const startTest = async () => {
     setStatus('TESTING');
     setTortoResult({});
-            
-    const testimoniMaschi = ["Tuo padre", "Tuo nonno", "Tuo zio", "Tuo fratello", "Tuo cugino", "Un insegnante", "Un amico"];
-    const testimoniFemmine = ["Tua madre", "Tua nonna", "Tua zia", "Tua sorella", "Tua cugina", "Un'insegnante", "Un'amica"];
-    const parentiAmbigui = ["Tuo nonno", "Tuo zio", "Tuo cugino", "Tua nonna", "Tua zia", "Tua cugina"];
 
     guardRef.current?.cancel();
     const guard = new SessionGuard(() => voiceService.cancel());
@@ -101,84 +114,62 @@ const TestimoneChiave: React.FC<ScreenProps> = ({ setPage }) => {
       await voiceService.speak(introText);
       if (!await guard.delay(1000)) return;
 
-      setMessage("L'evento fu causato o vissuto con un uomo? (Sì/No)");
-      const res1 = await voiceService.askQuestionWithSingleRetry("Era un uomo? Sì o No, attendo risposta.");
-      if (guard.isCancelled()) return;
-      const response1 = res1.response || 'NON_RILEVATO';
+      const outcome = await runWitnessAndTortoInvestigation({
+        voiceService,
+        guard,
+        age: timeLine?.etaEventoCausa || undefined,
+        onStatusMessage: setMessage,
+      });
 
-      let testimoniDaTestare: string[] = [];
-      if (response1 === 'SI') {
-        testimoniDaTestare = testimoniMaschi;
-      } else if (response1 === 'NO') {
-        setMessage("L'evento fu vissuto con una donna? (Sì/No)");
-        const res2 = await voiceService.askQuestionWithSingleRetry("Era una donna? Sì o No, attendo risposta.");
-        if (guard.isCancelled()) return;
-        const response2 = res2.response || 'NON_RILEVATO';
-        if (response2 === 'SI') {
-          testimoniDaTestare = testimoniFemmine;
-        } else {
-          setMessage("Testimone non identificato.");
-          setFoundWitness("Testimone non identificato");
-          setUserData(prev => ({ ...prev, testimoneChiave: "Testimone non identificato", completedTests: { ...prev.completedTests, testimone: true } }));
-          setStatus('SUCCESS');
-          try { await voiceService.speak("Testimone non identificato. Il test si è concluso."); } catch { /* ignore */ }
-          return;
-        }
-      } else {
-        setMessage("Risposta non rilevata sul genere del testimone. Ripeti il test.");
+      if (outcome.status === 'CANCELLED') return;
+      if (outcome.status === 'INTERRUPTED') {
         setStatus('IDLE');
+        setIsCalibrated(false);
+        setMessage(outcome.reason);
         return;
       }
 
-      let selectedWitness = 'Non identificato';
-      for (const testimone of testimoniDaTestare) {
-        setMessage(`Era ${testimone}?`);
-        const res = await voiceService.askQuestionWithSingleRetry(`Era ${testimone}? Sì o No, attendo risposta.`);
-        if (guard.isCancelled()) return;
-        if (res.response === 'SI') {
-          selectedWitness = testimone;
-          if (parentiAmbigui.includes(testimone)) {
-            const sideRes = await voiceService.askQuestionWithSingleRetry("Da parte di papà? Sì o No, attendo risposta.");
-            if (guard.isCancelled()) return;
-            if (sideRes.response === 'SI') selectedWitness += ' (Paterno)';
-            else if (sideRes.response === 'NO') selectedWitness += ' (Materno)';
-          }
-          break;
-        }
+      if (outcome.status === 'NOT_IDENTIFIED') {
+        setFoundWitness('non identificato');
+        setTortoResult({});
+        setMessage('Testimone non identificato.');
+        setUserData(prev => ({
+          ...prev,
+          testimoneChiave: 'non identificato',
+          giustificatoTorto: '',
+          avreiDovutoGiustificare: '',
+          completedTests: {
+            ...prev.completedTests,
+            testimone: true,
+            testimoneFromGrandeIndagine: false,
+          },
+        }));
+        setStatus('SUCCESS');
+        try { await voiceService.speak('Testimone non identificato. Il test si è concluso.'); } catch { /* ignore */ }
+        return;
       }
 
-      setFoundWitness(selectedWitness);
-
-      const witnessRef = selectedWitness !== 'Non identificato' ? `da ${selectedWitness}` : 'in quell\'evento';
-      setMessage(`Hai giustificato il torto ricevuto ${witnessRef}? (Sì/No)`);
-      const resJust = await voiceService.askQuestionWithSingleRetry(
-        `Caro inconscio, hai giustificato il torto ricevuto ${witnessRef}? Sì o no, attendo risposta.`
-      );
-      if (guard.isCancelled()) return;
-      const giustificatoVal = resJust.response || 'NON_RILEVATO';
-
-      if (!await guard.delay(1000)) return;
-
-      setMessage(`Avresti dovuto giustificare il torto ricevuto ${witnessRef}? (Sì/No)`);
-      const resShouldJust = await voiceService.askQuestionWithSingleRetry(
-        `Caro inconscio, avresti dovuto giustificare il torto ricevuto ${witnessRef}? Sì o no, attendo risposta.`
-      );
-      if (guard.isCancelled()) return;
-      const dovrebbeVal = resShouldJust.response || 'NON_RILEVATO';
-
-      setTortoResult({ giustificato: giustificatoVal, avrebbeDovuto: dovrebbeVal });
-      setMessage(`Testimone identificato: ${selectedWitness}. Reazione al torto registrata.`);
+      setFoundWitness(outcome.witness);
+      setTortoResult({
+        giustificato: outcome.giustificato,
+        avrebbeDovuto: outcome.avreiDovuto,
+      });
+      setMessage(`Testimone identificato: ${outcome.witness}. Reazione al torto registrata.`);
 
       setUserData(prev => ({
         ...prev,
-        testimoneChiave: selectedWitness,
-        giustificatoTorto: giustificatoVal,
-        avreiDovutoGiustificare: dovrebbeVal,
-        completedTests: { ...prev.completedTests, testimone: true }
+        testimoneChiave: outcome.witness,
+        giustificatoTorto: outcome.giustificato,
+        avreiDovutoGiustificare: outcome.avreiDovuto,
+        completedTests: {
+          ...prev.completedTests,
+          testimone: true,
+          testimoneFromGrandeIndagine: false,
+        },
       }));
       setStatus('SUCCESS');
       try {
-        await voiceService.speak(`Test completato. Testimone chiave: ${selectedWitness}.`);
+        await voiceService.speak(`Test completato. Testimone chiave: ${outcome.witness}.`);
       } catch { /* ignore */ }
     } catch {
       if (!guard.isCancelled()) setMessage("Test interrotto.");
@@ -192,9 +183,8 @@ const TestimoneChiave: React.FC<ScreenProps> = ({ setPage }) => {
     return '-';
   };
 
-  const hasCoherenceData =
-    (tortoResult.giustificato === 'SI' || tortoResult.giustificato === 'NO') &&
-    (tortoResult.avrebbeDovuto === 'SI' || tortoResult.avrebbeDovuto === 'NO');
+  const coherenceMessage = getTortoCoherenceText(tortoResult.giustificato, tortoResult.avrebbeDovuto);
+  const hasExistingWitness = Boolean(userData.testimoneChiave);
 
   return (
     <div className="bg-white rounded-2xl shadow-xl p-4 sm:p-6 pb-24 relative border border-slate-100">
@@ -203,7 +193,7 @@ const TestimoneChiave: React.FC<ScreenProps> = ({ setPage }) => {
           <span className="inline-block px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-teal-100 text-teal-800 mb-1">
             Test Standalone
           </span>
-          <h2 className="text-2xl font-serif font-black text-gray-900">Testimone Chiave & Torto</h2>
+          <h2 className="text-2xl font-serif font-black text-gray-900">Testimone &amp; Torto</h2>
           <h3 className="text-sm font-medium text-gray-600">Ricerca della figura coinvolta e della reazione al torto</h3>
         </div>
         <button onClick={handleExit} data-keep-voice="true" className="text-xs uppercase tracking-widest font-bold text-gray-500 hover:text-blue-600 border border-gray-200 px-3 py-1.5 rounded-lg transition">
@@ -215,16 +205,51 @@ const TestimoneChiave: React.FC<ScreenProps> = ({ setPage }) => {
 
       <InfoBox>
         <p>
-          Il Testimone Chiave è la figura specifica (genitore, parente, figura autoritaria o affettiva) collegata alla memoria emotiva dell'inconscio, insieme alla tua reazione verso il torto ricevuto.
+          La scheda <strong>Testimone &amp; Torto</strong> individua il ruolo della persona coinvolta nell'evento e verifica le due domande sulla reazione al torto.
         </p>
       </InfoBox>
+
+      {status === 'IDLE' && hasExistingWitness && !reusePromptDismissed && (
+        <div className="my-5 p-4 sm:p-5 rounded-2xl bg-teal-50 border-2 border-teal-200 shadow-sm space-y-3">
+          <div>
+            <span className="inline-block text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-white text-teal-800 border border-teal-200">
+              {userData.completedTests?.testimoneFromGrandeIndagine ? 'Dato da Grande Indagine' : 'Dato già presente'}
+            </span>
+            <h4 className="font-serif font-bold text-lg text-teal-950 mt-1">
+              Testimone già registrato: {userData.testimoneChiave === 'non identificato' ? 'Testimone non identificato' : userData.testimoneChiave}
+            </h4>
+            {userData.giustificatoTorto && (
+              <p className="text-xs sm:text-sm text-teal-900 mt-0.5">
+                Hai giustificato: <strong>{formatTortoLabel(userData.giustificatoTorto)}</strong>
+                {userData.avreiDovutoGiustificare ? ` · Avresti dovuto: ${formatTortoLabel(userData.avreiDovutoGiustificare)}` : ''}
+              </p>
+            )}
+          </div>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <button
+              type="button"
+              onClick={handleReuseExisting}
+              className="flex-1 bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 px-4 rounded-xl shadow transition text-sm"
+            >
+              ✓ Riutilizza dato esistente
+            </button>
+            <button
+              type="button"
+              onClick={() => { setReusePromptDismissed(true); setFoundWitness(''); setTortoResult({}); }}
+              className="flex-1 bg-white hover:bg-slate-100 text-slate-800 font-bold py-3 px-4 rounded-xl border border-slate-300 transition text-sm"
+            >
+              🔄 Rifai il test
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="my-6">
         <CameraView ref={cameraRef} videoRef={videoRef} onReady={handleCameraReady} onCalibrated={handleCalibrated} showCalibrationButton={false} />
       </div>
 
       <div className="my-6 flex justify-center">
-        {status === 'IDLE' && !isCalibrated && (
+        {status === 'IDLE' && !isCalibrated && (!hasExistingWitness || reusePromptDismissed) && (
           <button
             onClick={startCalibration}
             disabled={!isCameraReady}
@@ -256,20 +281,21 @@ const TestimoneChiave: React.FC<ScreenProps> = ({ setPage }) => {
           <div className="flex items-center gap-3 mb-3">
             <span className="text-3xl">👤</span>
             <div>
-              <h4 className="font-serif font-black text-xl text-teal-950">Testimone Chiave & Torto</h4>
-              <p className="text-lg font-bold text-teal-900">{foundWitness}</p>
+              <h4 className="font-serif font-black text-xl text-teal-950">Testimone &amp; Torto</h4>
+              <p className="text-lg font-bold text-teal-900">
+                {foundWitness === 'non identificato' ? 'Testimone non identificato' : foundWitness}
+              </p>
             </div>
           </div>
 
-          {(tortoResult.giustificato || tortoResult.avrebbeDovuto) && (
+          {foundWitness !== 'non identificato' && (tortoResult.giustificato || tortoResult.avrebbeDovuto) && (
             <div className="bg-white/80 rounded-xl p-4 border border-teal-200 space-y-2 text-sm">
               <p><strong>Hai giustificato il torto:</strong> {formatTortoLabel(tortoResult.giustificato)}</p>
+              <p className="text-xs text-slate-700">{getTortoReactionText(tortoResult.giustificato)}</p>
               <p><strong>Avresti dovuto giustificare:</strong> {formatTortoLabel(tortoResult.avrebbeDovuto)}</p>
-              {hasCoherenceData && (
-                <p className="text-xs italic text-slate-700 pt-1 border-t border-teal-100">
-                  {tortoResult.giustificato === tortoResult.avrebbeDovuto
-                    ? 'Risposta coerente.'
-                    : "Secondo il modello DAB, la discordanza tra le due risposte indica un possibile conflitto: è un'ipotesi da osservare, non una prova."}
+              {coherenceMessage && (
+                <p className="text-xs italic text-slate-800 font-medium pt-1 border-t border-teal-100">
+                  {coherenceMessage}
                 </p>
               )}
             </div>

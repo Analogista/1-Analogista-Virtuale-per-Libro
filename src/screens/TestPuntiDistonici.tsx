@@ -13,11 +13,18 @@ interface ScreenProps {
 }
 
 const puntiMapping = {
-  famiglia: "rapporti con la famiglia d'origine",
-  famigliaAcquisita: "rapporti con la famiglia acquisita",
-  sentimentali: "rapporti sentimentali e affettivi",
-  sessuali: "rapporti passionali e sessuali",
+  famiglia: "famiglia d'origine",
+  famigliaAcquisita: "famiglia acquisita",
+  sentimentali: "relazioni sentimentali e affettive",
+  sessuali: "relazioni passionali e sessuali",
   autorealizzazione: "autorealizzazione, hobby e lavoro"
+};
+const puntiVoiceMapping: Record<keyof typeof puntiMapping, string> = {
+  famiglia: "la famiglia d'origine",
+  famigliaAcquisita: "la famiglia acquisita, cioè matrimonio o convivenza con partner, eventuali figli, suoceri e altri parenti acquisiti",
+  sentimentali: "le relazioni sentimentali e affettive",
+  sessuali: "le relazioni passionali e sessuali",
+  autorealizzazione: "l'autorealizzazione, gli hobby e il lavoro"
 };
 type PuntoKey = keyof typeof puntiMapping;
 
@@ -113,7 +120,7 @@ const TestPuntiDistonici: React.FC<ScreenProps> = ({ setPage }) => {
 
       for (const punto of Object.keys(puntiMapping) as PuntoKey[]) {
         setMessage(`Indagine in corso: ${puntiMapping[punto]}...`);
-        const text = `Caro inconscio, sei soddisfatto di come ${nome} sta gestendo i ${puntiMapping[punto]}? Sì o No? Attendo risposta.`;
+        const text = `Caro inconscio, sei soddisfatto di come ${nome} sta vivendo ${puntiVoiceMapping[punto]}? Sì o No? Attendo risposta.`;
         const res = await voiceService.askQuestionWithSingleRetry(text);
         if (guard.isCancelled()) return;
 
@@ -155,7 +162,7 @@ const TestPuntiDistonici: React.FC<ScreenProps> = ({ setPage }) => {
         }
 
         if (!identifiedPunto) {
-          const noPriorityMsg = 'Nessun punto distonico prioritario identificato. Puoi ripetere il test in un altro momento.';
+          const noPriorityMsg = "Non c'è una priorità chiara tra i punti distonici emersi. Ti invito a riprovare in un altro giorno.";
           setSelectedPunto('');
           setMessage(noPriorityMsg);
           setStatus('SUCCESS');
@@ -187,7 +194,7 @@ const TestPuntiDistonici: React.FC<ScreenProps> = ({ setPage }) => {
             Test Standalone
           </span>
           <h2 className="text-2xl font-serif font-black text-gray-900">Test Punti Distonici</h2>
-          <h3 className="text-sm font-medium text-gray-600">Le 5 Aree della Vita: famiglia d'origine, famiglia acquisita, sentimenti, passioni, realizzazione</h3>
+          <h3 className="text-sm font-medium text-gray-600">Le 5 aree: famiglia d'origine, famiglia acquisita (matrimonio/convivenza), relazioni sentimentali e affettive, relazioni passionali e sessuali, autorealizzazione, hobby e lavoro</h3>
         </div>
         <button
           onClick={handleExit}
@@ -202,7 +209,7 @@ const TestPuntiDistonici: React.FC<ScreenProps> = ({ setPage }) => {
 
       <InfoBox>
         <p>
-          Posizionati in piedi di fronte alla webcam con il busto centrato. Il test indaga in modo indipendente le 5 aree fondamentali della tua vita (famiglia d'origine, famiglia acquisita, relazioni sentimentali e affettive, relazioni passionali e sessuali, autorealizzazione hobby e lavoro) per individuare dove si annidano i disagi emotivi.
+          Posizionati in piedi di fronte alla webcam con il busto centrato. Il test indaga in ordine le 5 aree fondamentali della vita: <strong>famiglia d'origine</strong>; <strong>famiglia acquisita</strong> (matrimonio o convivenza: partner, eventuali figli, suoceri e altri parenti acquisiti); <strong>relazioni sentimentali e affettive</strong>; <strong>relazioni passionali e sessuali</strong>; <strong>autorealizzazione, hobby e lavoro</strong>.
         </p>
       </InfoBox>
 
@@ -268,7 +275,10 @@ const TestPuntiDistonici: React.FC<ScreenProps> = ({ setPage }) => {
                     : 'bg-white border-slate-200 text-slate-500'
                 }`}
               >
-                <span className="capitalize">{puntiMapping[key]}</span>
+                <span className="capitalize">
+                  {puntiMapping[key]}
+                  {key === 'famigliaAcquisita' ? ' (partner, figli, suoceri)' : ''}
+                </span>
                 <span className="font-bold text-xs uppercase px-2 py-0.5 rounded">
                   {val === 'SI' ? '✓ Soddisfatto' : val === 'NO' ? '⚠️ Distonia' : '-'}
                 </span>

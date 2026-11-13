@@ -60,12 +60,12 @@ Il problema attuale non nasce oggi, ma è una ripetizione analogica.
 - **Fatto:** L'evento recente (ultimi mesi/anni) che ha riattivato quel file per analogia (es. un'umiliazione sul lavoro).
 - **Punto Utopico (PU):** Il momento teorico di equilibrio (Età attuale / 2).
 - **Punto Topico (PT):** Il momento di massimo dolore/rottura (Media tra età Antefatto e età Fatto).
-- **Lettura Temporale:**
+- **Lettura analogica:**
   - Se PT < PU -> **Libertà Vincolata** (Il passato pesa sul futuro).
   - Se PT > PU -> **Sogno Frustrato** (Il futuro è bloccato dal presente).
 
 6. REAZIONE AL TORTO: DISSOCIAZIONE VS SCISSIONE
 Come reagisce l'individuo al trauma?
 - **GIUSTIFICARE (SÌ):** Ha accettato il giudizio senza dire la propria. Meccanismo: **DISSOCIAZIONE**.
-- **NON GIUSTIFICARE (NO):** Ha reagito, la colpa è rimasta all'esterno. Meccanismo: **SCISSIONE**.
+- **NON GIUSTIFICARE (NO):** Ha reagito, la colpa è dell'altro e la rabbia resta all'esterno. Meccanismo: **SCISSIONE**.
 `;
