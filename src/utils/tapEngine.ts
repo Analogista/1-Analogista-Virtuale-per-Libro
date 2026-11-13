@@ -136,10 +136,11 @@ export const computeTapDiagnosis = (
 
   const symbols: SymbolType[] = ['cerchio', 'asta', 'triangolo'];
 
-  // Verifica che nessun simbolo sia NON_RILEVATO, NEUTRO o vuoto
+  // Verifica che nessun simbolo sia NON_RILEVATO o vuoto; ammette al massimo 1 NEUTRO
+  let neutralCount = 0;
   for (const sym of symbols) {
     const r = results[sym];
-    if (!r || r === 'NON_RILEVATO' || r === 'NEUTRO') {
+    if (!r || r === 'NON_RILEVATO') {
       return {
         isValid: false,
         tipologia: 'Test Incompleto o Risultato Non Affidabile',
@@ -149,6 +150,20 @@ export const computeTapDiagnosis = (
         dinamica: 'Le Discipline Analogiche richiedono risposte nette (SÌ/NO) per ciascun archetipo senza ambiguità o parità.'
       };
     }
+    if (r === 'NEUTRO') {
+      neutralCount++;
+    }
+  }
+
+  if (neutralCount > 1) {
+    return {
+      isValid: false,
+      tipologia: 'Test Incompleto o Risultato Non Affidabile',
+      distonia: `Troppi simboli neutri (${neutralCount}). È ammesso al massimo 1 simbolo Neutro, con 1 Avanti (SÌ) e almeno 1 Indietro (NO).`,
+      avanti: '',
+      indietro: '',
+      dinamica: 'Le Discipline Analogiche richiedono almeno 1 risposta in Avanti (SÌ) e 1 in Indietro (NO).'
+    };
   }
 
   symbols.forEach(sym => {

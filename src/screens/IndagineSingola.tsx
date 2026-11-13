@@ -11,6 +11,7 @@ import {
   getTortoReactionText,
   getTortoCoherenceText,
 } from '../utils/witnessInvestigation';
+import { isValidSigillo } from './TestSigilliVincoli';
 
 const seasons = {
   Primavera: ['Marzo', 'Aprile', 'Maggio'],
@@ -123,7 +124,14 @@ const IndagineSingola: React.FC<ScreenProps> = ({ setPage }) => {
   const runInvestigation = async () => {
     const currentAge = parseInt(userData.eta, 10) || 30;
     const nome = userData.nome || 'Amico';
-    const problema = userData.problema || 'il tuo blocco emotivo o disagio';
+    const sigilloValido = isValidSigillo(userData.sigilloFinale) ? userData.sigilloFinale : '';
+    const problemaTrimmed = (userData.problema || '').trim();
+    const openingQuestion = sigilloValido
+      ? `Caro inconscio di ${nome}, quando è accaduto l'evento che, se non fosse avvenuto, oggi non sarebbe presente in te il sigillo: ${sigilloValido}?`
+      : problemaTrimmed
+        ? `Caro inconscio di ${nome}, quando è accaduto l'evento che, se non fosse avvenuto, oggi non avresti: ${problemaTrimmed}?`
+        : `Caro inconscio di ${nome}, quando è accaduto l'evento che, se non fosse avvenuto, oggi non avresti il disagio che vuoi risolvere?`;
+
     guardRef.current?.cancel();
     const guard = new SessionGuard(() => voiceService.cancel());
     guardRef.current = guard;
@@ -131,7 +139,7 @@ const IndagineSingola: React.FC<ScreenProps> = ({ setPage }) => {
     setStatus('TESTING');
     try {
       // 1. Introduzione evento causa
-      await voiceService.speak(`Caro inconscio di ${nome}, quando accadde quell'evento passato che, se non fosse accaduto, oggi non avresti: ${problema}?`);
+      await voiceService.speak(openingQuestion);
       if (!await guard.delay(500)) return;
 
       // 2. Età evento (ricerca binaria)
@@ -149,7 +157,7 @@ const IndagineSingola: React.FC<ScreenProps> = ({ setPage }) => {
           lower = midpoint;
         }
       }
-      const foundAge = upper;
+      const foundAge = lower;
       const timeline = calculateTimeline(foundAge);
       setSummary(prev => ({ ...prev, age: foundAge }));
       setUserData(prev => ({
@@ -176,48 +184,66 @@ const IndagineSingola: React.FC<ScreenProps> = ({ setPage }) => {
           break;
         }
       }
-      if (!foundSeason) foundSeason = 'Primavera';
 
-      // 4. Ricerca del mese
+      // 4. Ricerca del mese (solo se una stagione ha ricevuto SÌ)
       let foundMonth: string | null = null;
-      for (const month of seasons[foundSeason]) {
-        const res = await askWithStrictRepeat(`L'evento accadde nel mese di ${month}? Sì o no, attendo risposta.`, guard);
-        if (guard.isCancelled()) return;
-        if (res === 'NON_RILEVATO') { setStatus('IDLE'); setMessage('Ricerca interrotta.'); return; }
-        if (res === 'SI') {
-          foundMonth = month;
-          break;
+      if (foundSeason) {
+        for (const month of seasons[foundSeason]) {
+          const res = await askWithStrictRepeat(`L'evento accadde nel mese di ${month}? Sì o no, attendo risposta.`, guard);
+          if (guard.isCancelled()) return;
+          if (res === 'NON_RILEVATO') { setStatus('IDLE'); setMessage('Ricerca interrotta.'); return; }
+          if (res === 'SI') {
+            foundMonth = month;
+            break;
+          }
         }
       }
-      if (!foundMonth) foundMonth = seasons[foundSeason][0];
 
-      // 5. Ricerca del giorno
-      let lowerDay = 1;
-      let upperDay = daysInMonth[foundMonth];
-      while (upperDay > lowerDay) {
-        const midpoint = Math.floor(lowerDay + (upperDay - lowerDay) / 2);
-        const res = await askWithStrictRepeat(`Accadde prima del giorno ${midpoint + 1} di ${foundMonth}? Sì o no, attendo risposta.`, guard);
-        if (guard.isCancelled()) return;
-        if (res === 'NON_RILEVATO') { setStatus('IDLE'); setMessage('Ricerca interrotta.'); return; }
-        
-        if (res === 'SI') {
-          upperDay = midpoint;
-        } else {
-          lowerDay = midpoint + 1;
+      // 5. Ricerca del giorno (solo se sia stagione sia mese hanno ricevuto SÌ)
+      let foundDate: string;
+      let isDateEmerged = false;
+      if (foundSeason && foundMonth) {
+        let lowerDay = 1;
+        let upperDay = daysInMonth[foundMonth];
+        while (upperDay > lowerDay) {
+          const midpoint = Math.floor(lowerDay + (upperDay - lowerDay) / 2);
+          const res = await askWithStrictRepeat(`Accadde prima del giorno ${midpoint + 1} di ${foundMonth}? Sì o no, attendo risposta.`, guard);
+          if (guard.isCancelled()) return;
+          if (res === 'NON_RILEVATO') { setStatus('IDLE'); setMessage('Ricerca interrotta.'); return; }
+          
+          if (res === 'SI') {
+            upperDay = midpoint;
+          } else {
+            lowerDay = midpoint + 1;
+          }
         }
+        foundDate = `${lowerDay} ${foundMonth}`;
+        isDateEmerged = true;
+      } else {
+        foundDate = foundSeason || 'non emersa';
       }
-      const foundDate = `${lowerDay} ${foundMonth}`;
+
       setSummary(prev => ({ ...prev, date: foundDate }));
       setUserData(prev => ({
         ...prev,
         giornoEvento: foundDate,
         completedTests: {
           ...prev.completedTests,
-          qualeGiorno: true,
-          qualeGiornoFromGrandeIndagine: true,
-        }
+          qualeGiorno: isDateEmerged,
+          qualeGiornoFromGrandeIndagine: isDateEmerged,
+        },
       }));
-      await voiceService.speak(`Avevi ${foundAge} anni, il ${foundDate}. Ora cerchiamo il testimone.`);
+
+      if (isDateEmerged) {
+        await voiceService.speak(`Avevi ${foundAge} anni, il ${foundDate}. Ora cerchiamo il testimone.`);
+      } else {
+        setMessage('Data non emersa: annota ciò che hai e prosegui');
+        await voiceService.speak(
+          foundSeason
+            ? `Avevi ${foundAge} anni, in ${foundSeason}. Data non emersa: annota ciò che hai e prosegui. Ora cerchiamo il testimone.`
+            : `Avevi ${foundAge} anni. Data non emersa: annota ciò che hai e prosegui. Ora cerchiamo il testimone.`
+        );
+      }
       if (!await guard.delay(500)) return;
 
       // 6-8. Testimone Chiave e Reazione al Torto (blocco condiviso)
@@ -253,8 +279,8 @@ const IndagineSingola: React.FC<ScreenProps> = ({ setPage }) => {
             ...prev.completedTests,
             timeLine: true,
             timeLineFromGrandeIndagine: true,
-            qualeGiorno: true,
-            qualeGiornoFromGrandeIndagine: true,
+            qualeGiorno: isDateEmerged,
+            qualeGiornoFromGrandeIndagine: isDateEmerged,
             testimone: true,
             testimoneFromGrandeIndagine: true,
             indagineSingola: true,
@@ -285,16 +311,17 @@ const IndagineSingola: React.FC<ScreenProps> = ({ setPage }) => {
           ...prev.completedTests,
           timeLine: true,
           timeLineFromGrandeIndagine: true,
-          qualeGiorno: true,
-          qualeGiornoFromGrandeIndagine: true,
+          qualeGiorno: isDateEmerged,
+          qualeGiornoFromGrandeIndagine: isDateEmerged,
           testimone: true,
           testimoneFromGrandeIndagine: true,
           indagineSingola: true,
         },
       }));
 
+      const dateSummaryLabel = isDateEmerged ? foundDate : (foundSeason ? `${foundSeason} (data non emersa)` : 'non emersa');
       setStatus('SUCCESS');
-      setMessage(`Indagine completata con successo! Età: ${foundAge} anni; Data: ${foundDate}; Testimone: ${outcome.witness}; Torto: ${outcome.giustificato === 'SI' ? 'Giustificato' : 'Non Giustificato'}.`);
+      setMessage(`Indagine completata con successo! Età: ${foundAge} anni; Data: ${dateSummaryLabel}; Testimone: ${outcome.witness}; Torto: ${outcome.giustificato === 'SI' ? 'Giustificato' : 'Non Giustificato'}.`);
       await voiceService.speak(`Indagine completata con successo. Testimone identificato: ${outcome.witness}. Puoi consultare l'esito.`);
     } catch (error) {
       console.error(error);
@@ -332,6 +359,14 @@ const IndagineSingola: React.FC<ScreenProps> = ({ setPage }) => {
           Questa indagine indipendente individua in un unico ciclo continuo l'età esatta dell'evento causa, il periodo e giorno dell'anno, la figura di riferimento (testimone chiave) e l'atteggiamento del tuo inconscio verso il torto ricevuto.
         </p>
       </InfoBox>
+
+      <div className="mt-2 mb-2">
+        <p className="inline-block text-xs font-bold uppercase tracking-wider text-indigo-800 bg-indigo-50 border border-indigo-200 rounded-lg px-3 py-1.5">
+          {isValidSigillo(userData.sigilloFinale)
+            ? `Indagine sul sigillo: ${userData.sigilloFinale}`
+            : 'Indagine sul problema indicato'}
+        </p>
+      </div>
 
       <div className="my-6">
         <CameraView ref={cameraRef} videoRef={videoRef} onReady={handleCameraReady} onCalibrated={handleCalibrated} showCalibrationButton={false} />
@@ -376,7 +411,13 @@ const IndagineSingola: React.FC<ScreenProps> = ({ setPage }) => {
             </div>
             <div className="p-3 bg-white rounded-xl border border-indigo-100 shadow-sm">
               <span className="text-[10px] uppercase font-bold text-slate-500">2. Data Esatta</span>
-              <p className="text-lg font-bold text-indigo-900">{summary.date || 'Non specificata'}</p>
+              <p className="text-lg font-bold text-indigo-900">
+                {summary.date === 'non emersa'
+                  ? 'Data non emersa: annota ciò che hai e prosegui'
+                  : (summary.date && Object.prototype.hasOwnProperty.call(seasons, summary.date))
+                    ? `${summary.date} — Data non emersa: annota ciò che hai e prosegui`
+                    : summary.date || 'Non specificata'}
+              </p>
             </div>
             <div className="p-3 bg-white rounded-xl border border-indigo-100 shadow-sm">
               <span className="text-[10px] uppercase font-bold text-slate-500">3. Testimone Chiave</span>

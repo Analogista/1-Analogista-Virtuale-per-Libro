@@ -111,63 +111,74 @@ const QualeGiorno: React.FC<ScreenProps> = ({ setPage }) => {
         }
       }
 
-      if (!foundSeason) foundSeason = 'Primavera';
-
-      // 2. Mese
-      for (const month of seasons[foundSeason]) {
-        setMessage(`Era nel mese di ${month}? (Sì/No)`);
-        const res = await voiceService.askQuestionWithSingleRetry(`Era nel mese di ${month}? Sì o no, attendo risposta.`);
-        if (guard.isCancelled()) return;
-        if (res.response === 'NON_RILEVATO') {
-          setMessage('Ricerca interrotta: risposta non rilevata.');
-          setStatus('IDLE');
-          return;
-        }
-        if (res.response === 'SI') {
-          foundMonth = month;
-          break;
-        }
-      }
-
-      if (!foundMonth) foundMonth = seasons[foundSeason][0];
-
-      // 3. Giorno (Ricerca Binaria)
-      let lowerBound = 1;
-      let upperBound = daysInMonth[foundMonth];
-      
-      while (upperBound > lowerBound) {
-        const midPoint = Math.floor(lowerBound + (upperBound - lowerBound) / 2);
-        const question = `L'evento accadde prima del giorno ${midPoint + 1} di ${foundMonth}? Sì o no?`;
-        setMessage(`Accadde prima del ${midPoint + 1} ${foundMonth}?`);
-        const res = await voiceService.askQuestionWithSingleRetry(question);
-        if (guard.isCancelled()) return;
-        
-        if (res.response === 'NON_RILEVATO') {
+      // 2. Mese (solo se una stagione ha ricevuto SÌ)
+      if (foundSeason) {
+        for (const month of seasons[foundSeason]) {
+          setMessage(`Era nel mese di ${month}? (Sì/No)`);
+          const res = await voiceService.askQuestionWithSingleRetry(`Era nel mese di ${month}? Sì o no, attendo risposta.`);
+          if (guard.isCancelled()) return;
+          if (res.response === 'NON_RILEVATO') {
             setMessage('Ricerca interrotta: risposta non rilevata.');
             setStatus('IDLE');
             return;
-        }
-
-        if (res.response === 'SI') {
-          upperBound = midPoint;
-        } else {
-          lowerBound = midPoint + 1;
+          }
+          if (res.response === 'SI') {
+            foundMonth = month;
+            break;
+          }
         }
       }
 
-      const finalDate = `${lowerBound} ${foundMonth}`;
-      setFoundDate(finalDate);
-      setMessage(`Trovato! L'evento è accaduto il ${finalDate}.`);
-      await voiceService.speak(`L'evento causa è accaduto il ${finalDate}.`);
+      // 3. Giorno (Ricerca Binaria, solo se sia stagione sia mese hanno ricevuto SÌ)
+      let finalDate: string;
+      if (foundSeason && foundMonth) {
+        let lowerBound = 1;
+        let upperBound = daysInMonth[foundMonth];
+        
+        while (upperBound > lowerBound) {
+          const midPoint = Math.floor(lowerBound + (upperBound - lowerBound) / 2);
+          const question = `L'evento accadde prima del giorno ${midPoint + 1} di ${foundMonth}? Sì o no?`;
+          setMessage(`Accadde prima del ${midPoint + 1} ${foundMonth}?`);
+          const res = await voiceService.askQuestionWithSingleRetry(question);
+          if (guard.isCancelled()) return;
+          
+          if (res.response === 'NON_RILEVATO') {
+              setMessage('Ricerca interrotta: risposta non rilevata.');
+              setStatus('IDLE');
+              return;
+          }
 
+          if (res.response === 'SI') {
+            upperBound = midPoint;
+          } else {
+            lowerBound = midPoint + 1;
+          }
+        }
+
+        finalDate = `${lowerBound} ${foundMonth}`;
+        setFoundDate(finalDate);
+        setMessage(`Trovato! L'evento è accaduto il ${finalDate}.`);
+        await voiceService.speak(`L'evento causa è accaduto il ${finalDate}.`);
+      } else {
+        finalDate = foundSeason || 'non emersa';
+        setFoundDate(finalDate);
+        setMessage('Data non emersa: annota ciò che hai e prosegui');
+        await voiceService.speak(
+          foundSeason
+            ? `Stagione individuata: ${foundSeason}. Data non emersa: annota ciò che hai e prosegui.`
+            : 'Data non emersa: annota ciò che hai e prosegui.'
+        );
+      }
+
+      const isFullDateEmerged = Boolean(foundSeason && foundMonth);
       setUserData(prev => ({
         ...prev,
         giornoEvento: finalDate,
         completedTests: {
           ...prev.completedTests,
-          qualeGiorno: true,
+          qualeGiorno: isFullDateEmerged,
           qualeGiornoFromGrandeIndagine: false,
-        }
+        },
       }));
       setStatus('SUCCESS');
     } catch {
@@ -175,7 +186,11 @@ const QualeGiorno: React.FC<ScreenProps> = ({ setPage }) => {
     }
   };
 
-  const hasExistingDate = Boolean(userData.giornoEvento);
+  const hasExistingDate = Boolean(
+    userData.giornoEvento &&
+    userData.giornoEvento !== 'non emersa' &&
+    !Object.prototype.hasOwnProperty.call(seasons, userData.giornoEvento)
+  );
 
   return (
     <div className="bg-white rounded-2xl shadow-xl p-4 sm:p-6 pb-24 relative border border-slate-100">
@@ -249,7 +264,13 @@ const QualeGiorno: React.FC<ScreenProps> = ({ setPage }) => {
             <span className="text-3xl">📅</span>
             <div>
               <h4 className="font-serif font-black text-xl text-amber-950">Data Individuata</h4>
-              <p className="text-lg font-bold text-amber-900">{foundDate}</p>
+              <p className="text-lg font-bold text-amber-900">
+                {foundDate === 'non emersa'
+                  ? 'Data non emersa: annota ciò che hai e prosegui'
+                  : Object.prototype.hasOwnProperty.call(seasons, foundDate)
+                    ? `${foundDate} — Data non emersa: annota ciò che hai e prosegui`
+                    : foundDate}
+              </p>
             </div>
           </div>
           <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">

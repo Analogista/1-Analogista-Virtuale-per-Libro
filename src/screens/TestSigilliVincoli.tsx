@@ -12,13 +12,16 @@ interface ScreenProps {
   setPage: (page: number | string) => void;
 }
 
-const sigilliMapping = {
+export const sigilliMapping = {
   colpa: "Sensi di colpa",
   abbandono: "Paura dell'abbandono",
   giudizio: "Timore del giudizio",
   disistima: "Mancanza di autostima"
-};
+} as const;
 type SigilloKey = keyof typeof sigilliMapping;
+
+export const isValidSigillo = (value?: string): value is string =>
+  Boolean(value && (Object.values(sigilliMapping) as readonly string[]).includes(value));
 
 const TestSigilliVincoli: React.FC<ScreenProps> = ({ setPage }) => {
   const navigate = useNavigate();

@@ -15,7 +15,7 @@ interface ScreenProps {
 const TestNome: React.FC<ScreenProps> = ({ setPage }) => {
   const navigate = useNavigate();
   const { userData, setUserData } = useUser();
-  const [status, setStatus] = useState<'IDLE' | 'CALIBRATING' | 'TESTING_VERO' | 'TESTING_FALSO' | 'DONE' | 'SUCCESS'>('IDLE');
+  const [status, setStatus] = useState<'IDLE' | 'CALIBRATING' | 'TESTING_VERO' | 'TESTING_FALSO' | 'FAILED' | 'SUCCESS'>('IDLE');
   const [message, setMessage] = useState('Premi "Inizia Calibrazione" per avviare il test del nome.');
   const [result, setResult] = useState('');
   const [isCameraReady, setIsCameraReady] = useState(false);
@@ -126,26 +126,25 @@ const TestNome: React.FC<ScreenProps> = ({ setPage }) => {
       const falsoResponse = falsoRes.response;
 
       const finalTestNomeData = { ...newTestNomeData, nomeFalso: falsoResponse };
+      const isCoherentPair = veroResponse === 'SI' && falsoResponse === 'NO';
+
       setUserData(prev => ({
-        ...prev, 
+        ...prev,
         testNome: finalTestNomeData,
-        completedTests: { ...prev.completedTests, nome: true }
+        completedTests: { ...prev.completedTests, nome: isCoherentPair }
       }));
 
       setResult(prev => `${prev} Risposta al nome falso (${fakeName}): ${falsoResponse}.`);
 
-      if (veroResponse === 'SI' && falsoResponse === 'NO') {
+      if (isCoherentPair) {
         setMessage('Congratulazioni! Il tuo inconscio ha validato perfettamente la tua identità reale (Sì al nome vero, No al nome falso).');
         setStatus('SUCCESS');
         await voiceService.speak("Test del nome completato con successo. Il tuo inconscio riconosce pienamente la tua identità.");
-      } else if (veroResponse === 'SI') {
-        setMessage('Il tuo inconscio ha confermato il tuo nome reale.');
-        setStatus('SUCCESS');
-        await voiceService.speak("Test del nome completato. Il tuo nome è stato confermato.");
       } else {
-        setMessage('Il tuo inconscio non ha dato risposta affermativa al tuo nome. Potrebbe esserci una resistenza emotiva transitoria.');
-        setStatus('DONE');
-        await voiceService.speak("Il tuo inconscio non ha confermato il tuo nome reale. Ti consigliamo di ripetere la calibrazione e il test.");
+        const failMessage = 'La coppia di risposte non è coerente. Fai una pausa e ripeti il test; se non cambia, fermati per oggi e non passare ai test successivi.';
+        setMessage(failMessage);
+        setStatus('FAILED');
+        await voiceService.speak(failMessage);
       }
     } catch (e) {
       console.error(e);
@@ -222,20 +221,30 @@ const TestNome: React.FC<ScreenProps> = ({ setPage }) => {
       </div>
 
       <div className="text-center p-5 bg-slate-50 border border-slate-200 rounded-xl min-h-[90px] flex flex-col justify-center">
-        <p className={`font-semibold text-base ${status === 'SUCCESS' ? 'text-emerald-700' : 'text-slate-800'}`}>
+        <p className={`font-semibold text-base ${status === 'SUCCESS' ? 'text-emerald-700' : status === 'FAILED' ? 'text-amber-800' : 'text-slate-800'}`}>
           {message}
         </p>
         {result && <p className="text-xs text-slate-600 mt-2 font-mono">{result}</p>}
       </div>
 
       {/* Standalone Outcome Card */}
-      {(status === 'SUCCESS' || status === 'DONE') && (
-        <div className="mt-6 p-6 rounded-2xl bg-gradient-to-br from-emerald-50 to-teal-50 border-2 border-emerald-300 text-slate-800 shadow-md animate-fadeIn">
+      {(status === 'SUCCESS' || status === 'FAILED') && (
+        <div className={`mt-6 p-6 rounded-2xl border-2 text-slate-800 shadow-md animate-fadeIn ${
+          status === 'SUCCESS'
+            ? 'bg-gradient-to-br from-emerald-50 to-teal-50 border-emerald-300'
+            : 'bg-gradient-to-br from-amber-50 to-rose-50 border-amber-300'
+        }`}>
           <div className="flex items-center gap-3 mb-4">
-            <span className="text-3xl">🆔</span>
+            <span className="text-3xl">{status === 'SUCCESS' ? '🆔' : '⚠️'}</span>
             <div>
-              <h4 className="font-serif font-black text-xl text-emerald-950">Esito Test del Nome</h4>
-              <p className="text-xs text-emerald-800 font-medium">Reattività dell'inconscio alla tua identità anagrafica.</p>
+              <h4 className={`font-serif font-black text-xl ${status === 'SUCCESS' ? 'text-emerald-950' : 'text-amber-950'}`}>
+                {status === 'SUCCESS' ? 'Esito Test del Nome' : 'Test del Nome Non Coerente'}
+              </h4>
+              <p className={`text-xs font-medium ${status === 'SUCCESS' ? 'text-emerald-800' : 'text-amber-800'}`}>
+                {status === 'SUCCESS'
+                  ? "Reattività dell'inconscio alla tua identità anagrafica."
+                  : 'La coppia di risposte non è coerente: il test non risulta completato.'}
+              </p>
             </div>
           </div>
 
