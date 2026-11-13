@@ -17,6 +17,7 @@ import TestSigilliVincoli from './TestSigilliVincoli';
 import IndagineSingola from './IndagineSingola';
 import QualeGiorno from './QualeGiorno';
 import TestimoneChiave from './TestimoneChiave';
+import RicercaCause from './RicercaCause';
 import { BookConsole } from '../components/BookConsole';
 import { AdvancedVoiceService } from '../services/AdvancedVoiceService';
 
@@ -68,14 +69,31 @@ const Dashboard: React.FC = () => {
   const { setHeader, setProMode } = useHeader();
 
   useEffect(() => {
+    const handleGoHome = () => {
+      AdvancedVoiceService.stopAll();
+      setAudioEnabled(false);
+      setActiveTest(null);
+    };
+    window.addEventListener('analogista:goHome', handleGoHome);
+    return () => window.removeEventListener('analogista:goHome', handleGoHome);
+  }, [setAudioEnabled]);
+
+  useEffect(() => {
     AdvancedVoiceService.stopAll();
-    if (activeTest) {
+    if (activeTest === 'ricercaCause') {
+      setHeader('Ricerca Cause Profonde', 'Fase 2 — Approfondimenti sulle cause nel tempo');
+      setProMode(false);
+    } else if (activeTest) {
       const test = tests.find(t => t.id === activeTest);
       if (test) {
         setHeader(test.title, test.description);
         setProMode(true);
+      } else {
+        setHeader('Analogista Virtuale di Max Pisani', 'Ausilio gratuito per lettori di Smettila di Soffrire');
+        setProMode(false);
       }
     } else {
+      setHeader('Analogista Virtuale di Max Pisani', 'Ausilio gratuito per lettori di Smettila di Soffrire');
       setProMode(false);
     }
     return () => {
@@ -91,7 +109,11 @@ const Dashboard: React.FC = () => {
         navigate('/risultati');
         return;
       }
-      setActiveTest(destination);
+      if (destination === 'ricercaCause' || tests.some(t => t.id === destination)) {
+        setActiveTest(destination);
+        return;
+      }
+      setActiveTest(null);
       return;
     }
     if (destination === 0 || destination === 1) { 
@@ -108,11 +130,16 @@ const Dashboard: React.FC = () => {
   const totalCount = actionableTests.length;
   const progressPercent = totalCount > 0 ? Math.min(100, Math.round((completedCount / totalCount) * 100)) : 0;
 
+  if (activeTest === 'ricercaCause') {
+    return <RicercaCause setPage={handleNavigation} completedTests={userData.completedTests} />;
+  }
+
   if (activeTest) {
     const current = tests.find(t => t.id === activeTest);
-    if (!current) return null;
-    const TestComponent = current.component;
-    return <TestComponent setPage={handleNavigation} />;
+    if (current) {
+      const TestComponent = current.component;
+      return <TestComponent setPage={handleNavigation} />;
+    }
   }
 
   const isChiSeiComplete = !!userData.completedTests?.chiSei || !!userData.nome;
@@ -231,10 +258,7 @@ const Dashboard: React.FC = () => {
 
       {/* CONSOLLE: IL TUO PERCORSO CON IL LIBRO */}
       <BookConsole
-        onSelectTest={(id) => {
-          setAudioEnabled(false);
-          setActiveTest(id);
-        }}
+        onSelectTest={(id) => handleNavigation(id)}
         completedTests={userData.completedTests}
       />
 

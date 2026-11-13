@@ -57,6 +57,9 @@ const BottomNav: React.FC = () => {
 
   const handleNav = (path: string) => {
     AdvancedVoiceService.stopAll();
+    if (path === '/') {
+      window.dispatchEvent(new CustomEvent('analogista:goHome'));
+    }
     navigate(path);
   };
 
