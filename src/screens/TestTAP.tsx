@@ -22,13 +22,18 @@ export const TestTAP: React.FC<ScreenProps> = ({ setPage }) => {
   const [currentSymbolKey, setCurrentSymbolKey] = useState<SymbolType>('cerchio');
   const [isZooming, setIsZooming] = useState<boolean>(false);
   const [showOverlayOnCam, setShowOverlayOnCam] = useState<boolean>(true);
-  const [genere, setGenere] = useState<'MASCHIO' | 'FEMMINA'>(userData.genere === 'FEMMINA' ? 'FEMMINA' : 'MASCHIO');
+  const validGenere: 'MASCHIO' | 'FEMMINA' | null =
+    userData.genere === 'MASCHIO' || userData.genere === 'FEMMINA' ? userData.genere : null;
   const [results, setResults] = useState<Record<SymbolType, SymbolReaction>>({
     cerchio: userData.testTAP?.results?.cerchio || '',
     asta: userData.testTAP?.results?.asta || '',
     triangolo: userData.testTAP?.results?.triangolo || ''
   });
-  const [message, setMessage] = useState('Posizionati di fronte alla webcam, seleziona il tuo genere e avvia la calibrazione.');
+  const [message, setMessage] = useState(
+    validGenere
+      ? 'Posizionati di fronte alla webcam e avvia la calibrazione.'
+      : 'Genere non ancora impostato: completa prima «I Tuoi Dati» per avviare il test T.A.P.'
+  );
   const [isCameraReady, setIsCameraReady] = useState(false);
   const [cameraServiceId, setCameraServiceId] = useState<string | null>(null);
 
@@ -54,6 +59,10 @@ export const TestTAP: React.FC<ScreenProps> = ({ setPage }) => {
   };
 
   const startCalibration = async () => {
+    if (!validGenere) {
+      setMessage('Genere non ancora impostato: completa prima «I Tuoi Dati» per avviare il test T.A.P.');
+      return;
+    }
     setStatus('CALIBRATING');
     setMessage("Rimani immobile per la calibrazione del sistema analogico multi-campione...");
     try {
@@ -98,6 +107,7 @@ export const TestTAP: React.FC<ScreenProps> = ({ setPage }) => {
   };
 
   const runSymbolTests = async () => {
+    if (!validGenere) return;
     const symbolKeys: SymbolType[] = ['cerchio', 'asta', 'triangolo'];
     const currentResults = { ...results };
 
@@ -154,7 +164,7 @@ export const TestTAP: React.FC<ScreenProps> = ({ setPage }) => {
     }
 
     // Finished all symbols - compute diagnosis with validation
-    const computedDiagnosis = enrichTapDiagnosis(computeTapDiagnosis(currentResults, genere));
+    const computedDiagnosis = enrichTapDiagnosis(computeTapDiagnosis(currentResults, validGenere));
 
     if (!computedDiagnosis.isValid) {
       setStatus('WAITING_CALIBRATION');
@@ -167,7 +177,7 @@ export const TestTAP: React.FC<ScreenProps> = ({ setPage }) => {
 
     setUserData(prev => ({
       ...prev,
-      genere,
+      genere: validGenere,
       testTAP: {
         results: currentResults,
         diagnosis: computedDiagnosis
@@ -186,7 +196,7 @@ export const TestTAP: React.FC<ScreenProps> = ({ setPage }) => {
     } catch { /* ignore */ }
   };
 
-  const diagnosis = enrichTapDiagnosis(computeTapDiagnosis(results, genere));
+  const diagnosis = validGenere ? enrichTapDiagnosis(computeTapDiagnosis(results, validGenere)) : null;
   const showControls = status === 'WAITING_INTRO' || status === 'TESTING_SYMBOL';
 
   return (
@@ -209,22 +219,33 @@ export const TestTAP: React.FC<ScreenProps> = ({ setPage }) => {
         </button>
       </div>
 
-      {/* Seleziona Genere e Toggle Overlay */}
+      {/* Genere da "I Tuoi Dati" e Toggle Overlay */}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3 bg-gray-900/60 p-3 rounded-xl border border-gray-800">
-        <div className="flex items-center gap-3">
-          <span className="text-sm font-semibold text-gray-300">Soggetto (Genere):</span>
-          <button 
-            onClick={() => setGenere('MASCHIO')} 
-            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${genere === 'MASCHIO' ? 'bg-cyan-600 text-white shadow-lg' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}
-          >
-            MASCHIO (M)
-          </button>
-          <button 
-            onClick={() => setGenere('FEMMINA')} 
-            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${genere === 'FEMMINA' ? 'bg-pink-600 text-white shadow-lg' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}
-          >
-            FEMMINA (F)
-          </button>
+        <div className="flex flex-wrap items-center gap-3">
+          {validGenere ? (
+            <>
+              <span className="text-sm font-semibold text-gray-300">Soggetto (da «I Tuoi Dati»):</span>
+              <span className={`px-3 py-1 rounded-lg text-xs font-bold ${validGenere === 'MASCHIO' ? 'bg-cyan-600 text-white' : 'bg-pink-600 text-white'}`}>
+                {validGenere === 'MASCHIO' ? 'MASCHIO (M)' : 'FEMMINA (F)'}
+              </span>
+            </>
+          ) : (
+            <div className="flex flex-wrap items-center gap-3 text-amber-300">
+              <span className="text-xs sm:text-sm font-semibold">
+                ⚠️ Genere non indicato. Completa «I Tuoi Dati» per eseguire il test T.A.P.
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  try { voiceService.cancel(); } catch { /* ignore */ }
+                  setPage('chiSei');
+                }}
+                className="px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 transition"
+              >
+                Completa «I Tuoi Dati» →
+              </button>
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <label className="text-xs text-gray-300 cursor-pointer flex items-center gap-2 select-none">
@@ -271,7 +292,7 @@ export const TestTAP: React.FC<ScreenProps> = ({ setPage }) => {
 
       <div className="my-6 flex justify-center">
         {status === 'WAITING_CALIBRATION' && (
-            <button onClick={startCalibration} disabled={!isCameraReady} className="w-full bg-cyan-600 text-white font-black py-4 px-8 rounded-2xl transition duration-300 disabled:opacity-30 uppercase tracking-widest shadow-xl hover:bg-cyan-500">
+            <button onClick={startCalibration} disabled={!isCameraReady || !validGenere} className="w-full bg-cyan-600 text-white font-black py-4 px-8 rounded-2xl transition duration-300 disabled:opacity-30 uppercase tracking-widest shadow-xl hover:bg-cyan-500">
                 Inizia Calibrazione e Test T.A.P.
             </button>
         )}
@@ -302,7 +323,7 @@ export const TestTAP: React.FC<ScreenProps> = ({ setPage }) => {
         </div>
       </div>
 
-      {diagnosis.isValid && (
+      {diagnosis && diagnosis.isValid && (
         <div className="mt-6 p-6 rounded-2xl bg-indigo-950/40 border border-indigo-500/40 text-center animate-fadeIn">
           <h4 className="text-xs uppercase tracking-widest text-indigo-300 font-bold mb-1">Profilo T.A.P. Rilevato</h4>
           <p className="text-xl font-serif font-bold text-white mb-2">{diagnosis.tipologia}</p>

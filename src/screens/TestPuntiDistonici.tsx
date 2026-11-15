@@ -21,7 +21,7 @@ const puntiMapping = {
 };
 const puntiVoiceMapping: Record<keyof typeof puntiMapping, string> = {
   famiglia: "la famiglia d'origine",
-  famigliaAcquisita: "la famiglia acquisita, cioè matrimonio o convivenza con partner, eventuali figli, suoceri e altri parenti acquisiti",
+  famigliaAcquisita: "la famiglia acquisita",
   sentimentali: "le relazioni sentimentali e affettive",
   sessuali: "le relazioni passionali e sessuali",
   autorealizzazione: "l'autorealizzazione, gli hobby e il lavoro"
@@ -120,7 +120,7 @@ const TestPuntiDistonici: React.FC<ScreenProps> = ({ setPage }) => {
 
       for (const punto of Object.keys(puntiMapping) as PuntoKey[]) {
         setMessage(`Indagine in corso: ${puntiMapping[punto]}...`);
-        const text = `Caro inconscio, sei soddisfatto di come ${nome} sta vivendo ${puntiVoiceMapping[punto]}? Sì o No? Attendo risposta.`;
+        const text = `Caro inconscio, sei soddisfatto di come ${nome} sta gestendo ${puntiVoiceMapping[punto]}? Sì o No? Attendo risposta.`;
         const res = await voiceService.askQuestionWithSingleRetry(text);
         if (guard.isCancelled()) return;
 

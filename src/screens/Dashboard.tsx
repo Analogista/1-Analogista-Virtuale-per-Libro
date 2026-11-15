@@ -154,6 +154,43 @@ const Dashboard: React.FC = () => {
   return (
     <div className="space-y-6 animate-fadeIn relative pb-12">
 
+      {/* BLOCCO 1: DATI ANAGRAFICI (Sempre accessibile) */}
+      {dataTest && (
+        <section>
+          <button
+            onClick={() => { setAudioEnabled(false); setActiveTest(dataTest.id); }}
+            className={`w-full p-4 sm:p-5 rounded-2xl text-left transition-all duration-300 border-2 shadow-sm flex items-center justify-between ${
+              isChiSeiComplete 
+                ? 'bg-emerald-50/90 border-emerald-300 hover:bg-emerald-100/90 hover:shadow-md' 
+                : 'bg-white border-blue-300 hover:border-blue-500 hover:shadow-md'
+            }`}
+          >
+            <div className="flex items-center space-x-4">
+              <div className={`p-3 rounded-full ${isChiSeiComplete ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}`}>
+                <span className="text-2xl">{dataTest.icon}</span>
+              </div>
+              <div>
+                <h3 className="font-serif font-bold text-base sm:text-lg text-gray-900">
+                  {dataTest.title}
+                </h3>
+                <p className="text-xs sm:text-sm text-gray-600">
+                  {isChiSeiComplete
+                    ? `Dati inseriti: ${userData.nome || ''} (${userData.eta || ''} anni). Clicca per modificare.`
+                    : 'Inserisci il tuo nome, età e problema da risolvere per personalizzare la voce.'}
+                </p>
+              </div>
+            </div>
+            {isChiSeiComplete ? (
+              <span className="text-emerald-600 text-2xl font-bold ml-2">✓</span>
+            ) : (
+              <span className="text-xs font-bold uppercase tracking-wider text-blue-600 bg-blue-50 px-3 py-1 rounded-lg border border-blue-200">
+                Compila
+              </span>
+            )}
+          </button>
+        </section>
+      )}
+
       {/* GUIDA INTRODUTTIVA (Chiusa di default, primo elemento visibile) */}
       <section className="bg-orange-50/90 rounded-2xl border-2 border-orange-200 shadow-sm overflow-hidden transition-all">
         <button
@@ -303,43 +340,6 @@ const Dashboard: React.FC = () => {
           Vedi Risultati →
         </button>
       </div>
-
-      {/* BLOCCO 1: DATI ANAGRAFICI (Sempre accessibile) */}
-      {dataTest && (
-        <section>
-          <button
-            onClick={() => { setAudioEnabled(false); setActiveTest(dataTest.id); }}
-            className={`w-full p-4 sm:p-5 rounded-2xl text-left transition-all duration-300 border-2 shadow-sm flex items-center justify-between ${
-              isChiSeiComplete 
-                ? 'bg-emerald-50/90 border-emerald-300 hover:bg-emerald-100/90 hover:shadow-md' 
-                : 'bg-white border-blue-300 hover:border-blue-500 hover:shadow-md'
-            }`}
-          >
-            <div className="flex items-center space-x-4">
-              <div className={`p-3 rounded-full ${isChiSeiComplete ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}`}>
-                <span className="text-2xl">{dataTest.icon}</span>
-              </div>
-              <div>
-                <h3 className="font-serif font-bold text-base sm:text-lg text-gray-900">
-                  {dataTest.title}
-                </h3>
-                <p className="text-xs sm:text-sm text-gray-600">
-                  {isChiSeiComplete
-                    ? `Dati inseriti: ${userData.nome || ''} (${userData.eta || ''} anni). Clicca per modificare.`
-                    : 'Inserisci il tuo nome, età e problema da risolvere per personalizzare la voce.'}
-                </p>
-              </div>
-            </div>
-            {isChiSeiComplete ? (
-              <span className="text-emerald-600 text-2xl font-bold ml-2">✓</span>
-            ) : (
-              <span className="text-xs font-bold uppercase tracking-wider text-blue-600 bg-blue-50 px-3 py-1 rounded-lg border border-blue-200">
-                Compila
-              </span>
-            )}
-          </button>
-        </section>
-      )}
 
       {/* BLOCCO CALIBRAZIONE CORPOREA (Sempre accessibile) */}
       <section className="bg-slate-900 text-white rounded-2xl p-4 sm:p-5 shadow-md flex flex-col sm:flex-row items-center justify-between gap-4">
