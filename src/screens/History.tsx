@@ -1,10 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { useHeader } from '../contexts/HeaderContext';
 import { db } from '../services/firebase';
 import { collection, query, where, orderBy, getDocs, Timestamp } from 'firebase/firestore';
 import { handleFirestoreError, OperationType } from '../utils/firestore';
-import { Calendar, User, Clock, ChevronRight, FileText, ShieldAlert } from 'lucide-react';
+import { Calendar, User, Clock, ChevronRight, FileText, ShieldAlert, LogIn } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../contexts/UserContext';
 
@@ -18,16 +17,11 @@ interface SavedSession {
 }
 
 const History: React.FC = () => {
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, loginWithGoogle } = useAuth();
   const { setUserData } = useUser();
-  const { setHeader } = useHeader();
   const [sessions, setSessions] = useState<SavedSession[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
-
-  useEffect(() => {
-    // Header managed centrally in App.tsx
-  }, []);
 
   useEffect(() => {
     const fetchSessions = async () => {
@@ -75,27 +69,59 @@ const History: React.FC = () => {
 
   if (!user) {
     return (
-      <div className="flex flex-col items-center justify-center p-12 text-center">
-        <div className="bg-blue-50 p-6 rounded-full mb-4">
-          <ShieldAlert className="text-blue-500 w-12 h-12" />
+      <div className="max-w-xl mx-auto p-4 sm:p-8">
+        <div className="mb-4">
+          <button
+            type="button"
+            onClick={() => navigate('/')}
+            className="text-xs sm:text-sm font-bold text-gray-700 hover:text-blue-600 border border-gray-300 px-3.5 py-2 rounded-xl transition bg-white shadow-2xs"
+          >
+            &larr; Torna alla Home
+          </button>
         </div>
-        <h2 className="text-2xl font-bold text-gray-800 mb-2">Accesso Richiesto</h2>
-        <p className="text-gray-600 mb-6">Effettua l'accesso per visualizzare lo storico delle tue sessioni.</p>
+
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8 text-center flex flex-col items-center">
+          <div className="bg-blue-50 p-4 rounded-full mb-4">
+            <ShieldAlert className="text-blue-600 w-10 h-10" />
+          </div>
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">Accesso richiesto</h2>
+          <p className="text-sm sm:text-base text-gray-600 mb-6 max-w-md leading-relaxed">
+            Accedi con il tuo account Google per vedere le analisi salvate in precedenza.
+          </p>
+          <button
+            type="button"
+            onClick={loginWithGoogle}
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-3 rounded-xl shadow transition text-sm sm:text-base"
+          >
+            <LogIn size={18} />
+            <span>Accedi</span>
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-4 sm:p-6">
-      <div className="flex items-center justify-between mb-8">
+    <div className="max-w-4xl mx-auto p-3 sm:p-6 overflow-x-hidden">
+      <div className="mb-4">
+        <button
+          type="button"
+          onClick={() => navigate('/')}
+          className="text-xs sm:text-sm font-bold text-gray-700 hover:text-blue-600 border border-gray-300 px-3.5 py-2 rounded-xl transition bg-white shadow-2xs"
+        >
+          &larr; Torna alla Home
+        </button>
+      </div>
+
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
         <div>
-          <h2 className="text-3xl font-bold text-gray-900">Storico Sessioni</h2>
-          <p className="text-gray-500">
+          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">Storico Sessioni</h2>
+          <p className="text-sm text-gray-600 mt-0.5">
             {isAdmin ? "Pannello Amministratore • Tutte le sessioni" : "Le tue analisi salvate"}
           </p>
         </div>
         {isAdmin && (
-           <div className="bg-red-50 text-red-600 px-3 py-1 rounded-full text-xs font-bold border border-red-100 flex items-center gap-1">
+           <div className="self-start sm:self-center bg-red-50 text-red-600 px-3 py-1 rounded-full text-xs font-bold border border-red-100 flex items-center gap-1">
              <ShieldAlert size={12} /> ADMIN MODE
            </div>
         )}

@@ -35,68 +35,70 @@ export const BookConsole: React.FC<BookConsoleProps> = ({ onSelectTest, complete
   };
 
   return (
-    <section className="bg-white rounded-2xl border-2 border-indigo-200/80 shadow-md p-3.5 sm:p-5 overflow-hidden">
+    <section className="bg-white rounded-2xl border-2 border-indigo-400 shadow-lg ring-1 ring-indigo-100 p-4 sm:p-6 overflow-hidden">
       {/* Testata della Consolle */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-indigo-100 pb-3 mb-3.5">
-        <div>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-indigo-100 pb-3.5 mb-4">
+        <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <span className="text-xl sm:text-2xl">🧭</span>
-            <h2 className="font-serif font-black text-lg sm:text-xl text-slate-900 tracking-tight">
+            <span className="text-2xl flex-shrink-0">🧭</span>
+            <h2 className="font-serif font-black text-xl sm:text-2xl text-slate-900 tracking-tight">
               Il tuo percorso con il libro
             </h2>
           </div>
-          <p className="text-xs sm:text-sm text-slate-600 font-medium mt-0.5">
-            Tre tappe guidate collegate alla lettura di <em className="text-indigo-900 font-semibold not-italic">Smettila di Soffrire</em>
+          <p className="text-sm text-slate-700 font-medium mt-1">
+            Percorso guidato in 3 fasi collegato alla lettura di <em className="text-indigo-900 font-semibold not-italic">Smettila di Soffrire</em>
           </p>
         </div>
-        <span className="self-start sm:self-center text-[10px] font-bold uppercase tracking-wider text-indigo-800 bg-indigo-50 border border-indigo-200 px-2.5 py-1 rounded-lg">
-          Consolle del Percorso
+        <span className="self-start sm:self-center text-xs font-bold uppercase tracking-wider text-indigo-900 bg-indigo-50 border border-indigo-200 px-3 py-1 rounded-lg whitespace-nowrap">
+          Percorso Principale
         </span>
       </div>
 
       {/* Fisarmoniche compatte delle 3 Fasi */}
-      <div className="space-y-3">
+      <div className="space-y-3.5">
         
         {/* ========================================================= */}
         {/* FASE 1: Fotografia iniziale */}
         {/* ========================================================= */}
-        <div className="rounded-xl border border-blue-200/90 bg-gradient-to-b from-blue-50/50 via-white to-blue-50/20 overflow-hidden transition-all shadow-2xs">
+        <div className="rounded-xl border-2 border-blue-200 bg-gradient-to-b from-blue-50/50 via-white to-blue-50/20 overflow-hidden transition-all shadow-2xs">
           <button
             type="button"
             onClick={() => togglePhase(1)}
-            className="w-full p-3.5 sm:p-4 text-left flex items-center justify-between gap-3 hover:bg-blue-50/60 transition group cursor-pointer"
+            aria-expanded={isPhase1Open}
+            className="w-full p-4 text-left flex items-center justify-between gap-3 hover:bg-blue-50/60 transition group cursor-pointer"
           >
-            <div className="flex items-center gap-3 min-w-0">
-              <span className="w-7 h-7 rounded-lg bg-amber-500 text-white font-serif font-black text-sm flex items-center justify-center shadow-xs flex-shrink-0">
+            <div className="flex items-start sm:items-center gap-3 min-w-0">
+              <span className="w-8 h-8 rounded-lg bg-amber-500 text-white font-serif font-black text-base flex items-center justify-center shadow-xs flex-shrink-0">
                 1
               </span>
               <div className="min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-amber-800">Fase 1</span>
                   <h3 className="font-serif font-bold text-base sm:text-lg text-slate-900 leading-tight">
                     Fotografia iniziale
                   </h3>
                   {isPhase1Complete ? (
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded">
                       ✓ Completata
                     </span>
                   ) : (
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-amber-800 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded">
-                      Inizio percorso
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-amber-800 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded">
+                      Da iniziare qui
                     </span>
                   )}
                 </div>
-                <p className="text-xs font-semibold text-blue-700 truncate mt-0.5">
-                  I 5 test collegati alla lettura
+                <p className="text-xs sm:text-sm font-medium text-blue-800 mt-0.5">
+                  I 5 test di base collegati alla lettura
                 </p>
               </div>
             </div>
 
             <div className="flex items-center gap-2 flex-shrink-0">
-              <span className="text-xs text-slate-400 font-medium hidden sm:inline">
-                {isPhase1Open ? 'Comprimi' : 'Apri'}
+              <span className="text-xs text-slate-600 font-semibold hidden sm:inline">
+                {isPhase1Open ? 'Chiudi' : 'Apri'}
               </span>
               <svg
-                className={`w-5 h-5 text-slate-500 transition-transform duration-300 ${isPhase1Open ? 'rotate-180' : ''}`}
+                className={`w-5 h-5 text-slate-600 transition-transform duration-300 ${isPhase1Open ? 'rotate-180' : ''}`}
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -107,13 +109,12 @@ export const BookConsole: React.FC<BookConsoleProps> = ({ onSelectTest, complete
           </button>
 
           {isPhase1Open && (
-            <div className="px-3.5 pb-3.5 sm:px-4 sm:pb-4 pt-1 border-t border-blue-100/80 animate-fadeIn">
-              <p className="text-xs text-slate-600 leading-relaxed mb-3">
-                <strong>Fase 1 — Fotografia iniziale T0 con cinque test:</strong> T.A.P., Induttore, Nome, Punti Distonici, Sigilli/Vincoli. 
-                <span className="text-slate-500 font-medium"> (La calibrazione preparatoria è una guida di inquadratura corporea, non un test).</span>
+            <div className="px-4 pb-4 pt-2 border-t border-blue-100 animate-fadeIn">
+              <p className="text-xs sm:text-sm text-slate-700 leading-relaxed mb-3">
+                Esegui in ordine i <strong>5 test iniziali</strong>: T.A.P., Induttore, Nome, Punti Distonici e Sigilli/Vincoli.
               </p>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 {[
                   { id: 'tap', title: '1. Test T.A.P.', label: 'Asta, Cerchio, Triangolo' },
                   { id: 'induttore', title: '2. Test Induttore', label: 'Libertà vs Sogno' },
@@ -125,24 +126,25 @@ export const BookConsole: React.FC<BookConsoleProps> = ({ onSelectTest, complete
                   return (
                     <button
                       key={t.id}
+                      type="button"
                       onClick={() => onSelectTest(t.id)}
-                      className="flex items-center justify-between p-2.5 rounded-lg bg-white hover:bg-blue-50 border border-blue-100 hover:border-blue-300 text-left transition group text-xs shadow-2xs"
+                      className="flex items-center justify-between gap-2 p-3 rounded-xl bg-white hover:bg-blue-50 border border-blue-200 hover:border-blue-400 text-left transition group text-sm shadow-2xs"
                     >
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="font-bold text-slate-800 group-hover:text-blue-700 truncate">
+                      <div className="min-w-0">
+                        <div className="font-bold text-slate-900 group-hover:text-blue-700">
                           {t.title}
-                        </span>
-                        <span className="text-[11px] text-slate-500 hidden md:inline truncate">
-                          · {t.label}
-                        </span>
+                        </div>
+                        <div className="text-xs text-slate-500">
+                          {t.label}
+                        </div>
                       </div>
                       {isDone ? (
-                        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 flex-shrink-0">
+                        <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-1 rounded-md border border-emerald-200 flex-shrink-0">
                           ✓ Fatto
                         </span>
                       ) : (
-                        <span className="text-[11px] text-blue-600 font-bold group-hover:translate-x-0.5 transition-transform flex-shrink-0">
-                          Avvia &rarr;
+                        <span className="text-xs text-blue-700 font-bold group-hover:translate-x-0.5 transition-transform flex-shrink-0">
+                          Avvia →
                         </span>
                       )}
                     </button>
@@ -156,37 +158,39 @@ export const BookConsole: React.FC<BookConsoleProps> = ({ onSelectTest, complete
         {/* ========================================================= */}
         {/* FASE 2: Approfondimenti */}
         {/* ========================================================= */}
-        <div className="rounded-xl border border-indigo-200/90 bg-gradient-to-b from-indigo-50/50 via-white to-indigo-50/20 overflow-hidden transition-all shadow-2xs">
+        <div className="rounded-xl border-2 border-indigo-200 bg-gradient-to-b from-indigo-50/50 via-white to-indigo-50/20 overflow-hidden transition-all shadow-2xs">
           <button
             type="button"
             onClick={() => togglePhase(2)}
-            className="w-full p-3.5 sm:p-4 text-left flex items-center justify-between gap-3 hover:bg-indigo-50/60 transition group cursor-pointer"
+            aria-expanded={isPhase2Open}
+            className="w-full p-4 text-left flex items-center justify-between gap-3 hover:bg-indigo-50/60 transition group cursor-pointer"
           >
-            <div className="flex items-center gap-3 min-w-0">
-              <span className="w-7 h-7 rounded-lg bg-indigo-600 text-white font-serif font-black text-sm flex items-center justify-center shadow-xs flex-shrink-0">
+            <div className="flex items-start sm:items-center gap-3 min-w-0">
+              <span className="w-8 h-8 rounded-lg bg-indigo-600 text-white font-serif font-black text-base flex items-center justify-center shadow-xs flex-shrink-0">
                 2
               </span>
               <div className="min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-800">Fase 2</span>
                   <h3 className="font-serif font-bold text-base sm:text-lg text-slate-900 leading-tight">
                     Approfondimenti
                   </h3>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-800 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-800 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded">
                     Scelta libera
                   </span>
                 </div>
-                <p className="text-xs font-semibold text-indigo-700 truncate mt-0.5">
-                  Scegli cosa esplorare in base a ciò che è emerso
+                <p className="text-xs sm:text-sm font-medium text-indigo-800 mt-0.5">
+                  Esplora nel tempo ciò che è emerso nella Fase 1
                 </p>
               </div>
             </div>
 
             <div className="flex items-center gap-2 flex-shrink-0">
-              <span className="text-xs text-slate-400 font-medium hidden sm:inline">
-                {isPhase2Open ? 'Comprimi' : 'Apri'}
+              <span className="text-xs text-slate-600 font-semibold hidden sm:inline">
+                {isPhase2Open ? 'Chiudi' : 'Apri'}
               </span>
               <svg
-                className={`w-5 h-5 text-slate-500 transition-transform duration-300 ${isPhase2Open ? 'rotate-180' : ''}`}
+                className={`w-5 h-5 text-slate-600 transition-transform duration-300 ${isPhase2Open ? 'rotate-180' : ''}`}
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -197,59 +201,62 @@ export const BookConsole: React.FC<BookConsoleProps> = ({ onSelectTest, complete
           </button>
 
           {isPhase2Open && (
-            <div className="px-3.5 pb-3.5 sm:px-4 sm:pb-4 pt-1 border-t border-indigo-100/80 animate-fadeIn">
-              <p className="text-xs text-slate-600 leading-relaxed mb-4">
-                <strong>Fase 2 — Approfondimenti scelti liberamente:</strong> Una volta emersi i blocchi, usa questi strumenti per trovare l'evento causa nel passato.
+            <div className="px-4 pb-4 pt-2 border-t border-indigo-100 animate-fadeIn">
+              <p className="text-xs sm:text-sm text-slate-700 leading-relaxed mb-3.5">
+                Quando hai completato i test di base, usa questa sezione per individuare età, periodo e testimone chiave.
               </p>
 
               <button
+                type="button"
                 onClick={() => onSelectTest('ricercaCause')}
-                className="w-full flex items-center justify-between p-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white transition shadow-md group"
+                className="w-full flex items-center justify-between gap-3 p-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white transition shadow-md group"
               >
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl group-hover:scale-110 transition-transform">🧭</span>
-                  <div className="text-left">
-                    <h4 className="font-bold text-sm">Vai alla Ricerca Cause</h4>
-                    <p className="text-[10px] text-indigo-100 opacity-80">Grande Indagine, Quale Giorno, Testimone</p>
+                <div className="flex items-center gap-3 min-w-0">
+                  <span className="text-2xl flex-shrink-0">🧭</span>
+                  <div className="text-left min-w-0">
+                    <h4 className="font-bold text-sm sm:text-base">Vai alla Ricerca Cause</h4>
+                    <p className="text-xs text-indigo-100">Grande Indagine, Quale Giorno, Testimone &amp; Torto</p>
                   </div>
                 </div>
-                <span className="text-xl group-hover:translate-x-1 transition-transform">→</span>
+                <span className="text-xl flex-shrink-0 group-hover:translate-x-1 transition-transform">→</span>
               </button>
             </div>
           )}
         </div>
 
         {/* ========================================================= */}
-        {/* FASE 3: Check-in e nuovo ciclo (Anteprima non attiva) */}
+        {/* FASE 3: Check-in e nuovo ciclo (Anteprima — Non ancora disponibile) */}
         {/* ========================================================= */}
-        <div className="rounded-xl border border-dashed border-slate-300 bg-gradient-to-b from-slate-50 via-white to-slate-50/70 overflow-hidden transition-all shadow-2xs">
+        <div className="rounded-xl border-2 border-dashed border-slate-300 bg-slate-50/90 overflow-hidden transition-all">
           <button
             type="button"
             onClick={() => togglePhase(3)}
-            className="w-full p-3.5 sm:p-4 text-left flex items-center justify-between gap-3 hover:bg-slate-100/60 transition group cursor-pointer"
+            aria-expanded={isPhase3Open}
+            className="w-full p-4 text-left flex items-center justify-between gap-3 hover:bg-slate-100/70 transition group cursor-pointer"
           >
-            <div className="flex items-center gap-3 min-w-0">
-              <span className="w-7 h-7 rounded-lg bg-slate-400 text-white font-serif font-black text-sm flex items-center justify-center shadow-xs flex-shrink-0">
+            <div className="flex items-start sm:items-center gap-3 min-w-0">
+              <span className="w-8 h-8 rounded-lg bg-slate-400 text-white font-serif font-black text-base flex items-center justify-center shadow-xs flex-shrink-0">
                 3
               </span>
               <div className="min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h3 className="font-serif font-bold text-base sm:text-lg text-slate-900 leading-tight">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-600">Fase 3</span>
+                  <h3 className="font-serif font-bold text-base sm:text-lg text-slate-800 leading-tight">
                     Check-in e nuovo ciclo
                   </h3>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-amber-800 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded">
-                    Anteprima
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-amber-900 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded">
+                    Anteprima • Non ancora disponibile
                   </span>
                 </div>
-                <p className="text-xs font-semibold text-slate-600 truncate mt-0.5">
-                  Torna su un punto o sigillo quando ne senti il bisogno
+                <p className="text-xs sm:text-sm font-medium text-slate-600 mt-0.5">
+                  Funzione prevista per i controlli dal giorno 15 e dopo il giorno 21
                 </p>
               </div>
             </div>
 
             <div className="flex items-center gap-2 flex-shrink-0">
-              <span className="text-xs text-slate-400 font-medium hidden sm:inline">
-                {isPhase3Open ? 'Comprimi' : 'Apri'}
+              <span className="text-xs text-slate-600 font-semibold hidden sm:inline">
+                {isPhase3Open ? 'Chiudi' : 'Dettagli'}
               </span>
               <svg
                 className={`w-5 h-5 text-slate-500 transition-transform duration-300 ${isPhase3Open ? 'rotate-180' : ''}`}
@@ -263,23 +270,24 @@ export const BookConsole: React.FC<BookConsoleProps> = ({ onSelectTest, complete
           </button>
 
           {isPhase3Open && (
-            <div className="px-3.5 pb-3.5 sm:px-4 sm:pb-4 pt-1 border-t border-slate-200 animate-fadeIn">
-              <p className="text-xs text-slate-600 leading-relaxed mb-3">
-                <strong>Fase 3 — Check-in dal giorno 15 e anche dopo il giorno 21:</strong> Anteprima non attiva dedicata a futuri momenti di auto-osservazione personale secondo il modello DAB (non costituisce diagnosi, prova certa di una causa né promessa di risoluzione).
+            <div className="px-4 pb-4 pt-2 border-t border-slate-200 animate-fadeIn">
+              <p className="text-xs sm:text-sm text-slate-700 leading-relaxed mb-3">
+                <strong>Solo anteprima:</strong> questa fase è <strong>non ancora disponibile</strong>. Sarà dedicata a futuri momenti di auto-osservazione personale secondo il modello DAB (non costituisce diagnosi, prova certa di una causa né promessa di risoluzione).
               </p>
 
-              <div className="p-3 rounded-lg bg-slate-50 border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-                <div className="flex items-center gap-2 text-xs text-slate-500">
+              <div className="p-3.5 rounded-xl bg-white border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-2 text-xs sm:text-sm text-slate-600">
                   <span className="text-base flex-shrink-0">🔒</span>
                   <span className="leading-snug">
-                    Fase in preparazione: si attiverà al termine delle prime settimane di lettura.
+                    Questa fase non è attiva al momento.
                   </span>
                 </div>
                 <button
+                  type="button"
                   disabled
-                  className="py-1.5 px-3 rounded-lg bg-slate-200/80 text-slate-400 text-[11px] font-bold uppercase tracking-wider cursor-not-allowed whitespace-nowrap self-start sm:self-auto"
+                  className="py-2 px-4 rounded-lg bg-slate-200 text-slate-600 text-xs font-bold uppercase tracking-wider cursor-not-allowed whitespace-nowrap self-start sm:self-auto"
                 >
-                  Anteprima non attiva
+                  Non ancora disponibile
                 </button>
               </div>
             </div>

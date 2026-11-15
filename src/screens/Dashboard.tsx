@@ -143,100 +143,82 @@ const Dashboard: React.FC = () => {
   }
 
   const isChiSeiComplete = !!userData.completedTests?.chiSei || !!userData.nome;
-  const infoTests = tests.filter(t => t.isInfo);
+  const isChiSeiMissingDetails = isChiSeiComplete && (!userData.genere || !userData.eta);
+  const introSubPages = tests.filter(t => t.id === 'chiSono' || t.id === 'introduzione');
   const dataTest = tests.find(t => t.id === 'chiSei');
-  
-  // Raggruppamento per categorie chiare
+  const calibrazioneTest = tests.find(t => t.id === 'calibrazione');
+  const isCalibrazioneDone = Boolean(userData.completedTests?.calibrazione);
+
+  // Raggruppamento per categorie chiare (sezione secondaria test singoli)
   const coreAnalogicTests = tests.filter(t => ['tap', 'induttore', 'nome', 'puntiDistonici', 'sigilli'].includes(t.id));
   const timelineTests = tests.filter(t => ['indagineSingola', 'qualeGiorno', 'testimone'].includes(t.id));
-  const prepTests = tests.filter(t => t.id === 'calibrazione');
 
   return (
-    <div className="space-y-6 animate-fadeIn relative pb-12">
+    <div className="space-y-5 animate-fadeIn relative pb-12 overflow-x-hidden">
 
-      {/* BLOCCO 1: DATI ANAGRAFICI (Sempre accessibile) */}
-      {dataTest && (
-        <section>
-          <button
-            onClick={() => { setAudioEnabled(false); setActiveTest(dataTest.id); }}
-            className={`w-full p-4 sm:p-5 rounded-2xl text-left transition-all duration-300 border-2 shadow-sm flex items-center justify-between ${
-              isChiSeiComplete 
-                ? 'bg-emerald-50/90 border-emerald-300 hover:bg-emerald-100/90 hover:shadow-md' 
-                : 'bg-white border-blue-300 hover:border-blue-500 hover:shadow-md'
-            }`}
-          >
-            <div className="flex items-center space-x-4">
-              <div className={`p-3 rounded-full ${isChiSeiComplete ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}`}>
-                <span className="text-2xl">{dataTest.icon}</span>
-              </div>
-              <div>
-                <h3 className="font-serif font-bold text-base sm:text-lg text-gray-900">
-                  {dataTest.title}
-                </h3>
-                <p className="text-xs sm:text-sm text-gray-600">
-                  {isChiSeiComplete
-                    ? `Dati inseriti: ${userData.nome || ''} (${userData.eta || ''} anni). Clicca per modificare.`
-                    : 'Inserisci il tuo nome, età e problema da risolvere per personalizzare la voce.'}
-                </p>
-              </div>
-            </div>
-            {isChiSeiComplete ? (
-              <span className="text-emerald-600 text-2xl font-bold ml-2">✓</span>
-            ) : (
-              <span className="text-xs font-bold uppercase tracking-wider text-blue-600 bg-blue-50 px-3 py-1 rounded-lg border border-blue-200">
-                Compila
-              </span>
-            )}
-          </button>
-        </section>
-      )}
-
-      {/* GUIDA INTRODUTTIVA (Chiusa di default, primo elemento visibile) */}
-      <section className="bg-orange-50/90 rounded-2xl border-2 border-orange-200 shadow-sm overflow-hidden transition-all">
-        <button
-          type="button"
-          onClick={() => setShowIntroGuide(prev => !prev)}
-          aria-expanded={showIntroGuide}
-          className="w-full p-4 sm:p-5 text-left flex items-center justify-between gap-4 hover:bg-orange-100/50 transition cursor-pointer"
-        >
-          <div className="flex items-center gap-3.5 min-w-0">
-            <div className="w-10 h-10 rounded-xl bg-white border border-orange-200 flex items-center justify-center text-xl flex-shrink-0 shadow-2xs">
-              📚
-            </div>
-            <div className="min-w-0">
-              <h2 className="font-serif font-black text-base sm:text-lg text-slate-900 leading-tight">
-                📖 Guida introduttiva
+      {/* 1. IN CIMA: SCHEDA COMPATTA "COS'È L'ANALOGISTA VIRTUALE E COME USARLO CON IL LIBRO" */}
+      <section className="bg-white rounded-2xl border-2 border-indigo-200 shadow-sm overflow-hidden transition-all">
+        <div className="p-4 sm:p-5 space-y-3">
+          <div className="flex items-start gap-3">
+            <span className="text-2xl sm:text-3xl flex-shrink-0" aria-hidden="true">🔮</span>
+            <div className="min-w-0 flex-1">
+              <h2 className="font-serif font-black text-lg sm:text-xl text-slate-900 leading-snug">
+                Cos’è l’Analogista Virtuale e come usarlo con il libro
               </h2>
-              <p className="text-xs sm:text-sm text-slate-600 mt-0.5">
-                Chi è Max Pisani, cos’è l’app e come posizionarsi
+              <p className="text-sm text-slate-700 mt-1 leading-relaxed">
+                È una guida pratica che ti accompagna nella lettura di <em>Smettila di Soffrire</em> ascoltando le reazioni istintive del corpo attraverso la fotocamera.
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <span className="text-xs font-semibold text-orange-700 hidden sm:inline">
-              {showIntroGuide ? 'Chiudi guida' : 'Apri guida'}
-            </span>
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center bg-white border border-orange-200 text-orange-700 transition-transform duration-300 ${showIntroGuide ? 'rotate-180 bg-orange-100' : ''}`}>
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div className="pt-1">
+            <button
+              type="button"
+              onClick={() => setShowIntroGuide(prev => !prev)}
+              aria-expanded={showIntroGuide}
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-900 font-bold text-sm border border-indigo-200 transition cursor-pointer"
+            >
+              <span>{showIntroGuide ? 'Chiudi la guida' : 'Leggi la guida'}</span>
+              <svg
+                className={`w-4 h-4 transition-transform duration-300 ${showIntroGuide ? 'rotate-180' : ''}`}
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
               </svg>
-            </div>
+            </button>
           </div>
-        </button>
+        </div>
 
         {showIntroGuide && (
-          <div className="p-4 sm:p-5 pt-3 border-t border-orange-200 bg-orange-50/50 animate-fadeIn">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              {infoTests.map((test) => (
+          <div className="p-4 sm:p-5 border-t border-indigo-100 bg-slate-50/80 space-y-4 animate-fadeIn text-sm text-slate-700 leading-relaxed">
+            <p>
+              Basato sulle Discipline Analogiche di Stefano Benemeglio e ideato da Max Pisani, l’<strong>Analogista Virtuale</strong> rileva con la fotocamera le micro-oscillazioni involontarie del corpo mentre ascolti le domande guida: un movimento in <strong>avanti indica SÌ</strong>, un movimento <strong>indietro indica NO</strong>.
+            </p>
+            <div className="bg-white rounded-xl border border-slate-200 p-3.5 space-y-1.5 text-sm">
+              <p className="font-bold text-slate-900">Come seguire il percorso:</p>
+              <p>1. Inserisci i tuoi dati qui sotto.</p>
+              <p>2. Leggi come posizionarti ed esegui la calibrazione della fotocamera.</p>
+              <p>3. Segui le tappe di <strong>«Il tuo percorso con il libro»</strong> (prima la Fase 1 con i 5 test iniziali, poi la Fase 2 per gli approfondimenti nel tempo; la Fase 3 è solo un’anteprima non ancora disponibile).</p>
+            </div>
+            <p className="text-xs text-slate-600 bg-white border border-slate-200 rounded-xl p-3">
+              Strumento di esplorazione personale secondo il modello DAB: non fornisce diagnosi mediche o psicologiche, prove certe di una causa né garanzie di risoluzione o superamento delle distonie.
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+              {introSubPages.map((test) => (
                 <button
                   key={test.id}
+                  type="button"
                   onClick={() => { setAudioEnabled(false); setActiveTest(test.id); }}
-                  className="flex flex-col items-center justify-center p-3.5 rounded-xl border border-orange-200 bg-white hover:bg-orange-100/50 transition-all text-center h-full shadow-sm"
+                  className="flex items-center gap-3 p-3.5 rounded-xl border border-indigo-200 bg-white hover:bg-indigo-50 transition text-left shadow-2xs"
                 >
-                  <span className="text-xl mb-1">{test.icon}</span>
-                  <h4 className="font-bold text-sm text-gray-900 mb-0.5">{test.title}</h4>
-                  <p className="text-xs text-gray-600">{test.description}</p>
+                  <span className="text-2xl flex-shrink-0">{test.icon}</span>
+                  <div className="min-w-0">
+                    <h4 className="font-bold text-sm text-slate-900">{test.title}</h4>
+                    <p className="text-xs text-slate-600">{test.description}</p>
+                  </div>
                 </button>
               ))}
             </div>
@@ -244,142 +226,164 @@ const Dashboard: React.FC = () => {
         )}
       </section>
 
-      {/* INTRODUZIONE ALL'ANALOGISTA VIRTUALE */}
-      <div className="bg-white rounded-2xl border-2 border-indigo-200 p-4 sm:p-5 shadow-sm space-y-3">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <span className="text-3xl flex-shrink-0">🔮</span>
-            <div>
-              <h2 className="font-serif font-black text-base sm:text-xl text-slate-900 tracking-tight">
-                Cos'è l'Analogista Virtuale e come usarlo con il libro
-              </h2>
-              <p className="text-xs sm:text-sm text-indigo-900 font-semibold mt-0.5">
-                Guida interattiva per ascoltare l'inconscio e identificare i blocchi emotivi
-              </p>
+      {/* 2. SUBITO DOPO: I TUOI DATI */}
+      {dataTest && (
+        <section>
+          <button
+            type="button"
+            onClick={() => { setAudioEnabled(false); setActiveTest(dataTest.id); }}
+            className={`w-full p-4 sm:p-5 rounded-2xl text-left transition-all duration-300 border-2 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+              isChiSeiComplete && !isChiSeiMissingDetails
+                ? 'bg-emerald-50/90 border-emerald-300 hover:bg-emerald-100/90 hover:shadow-md'
+                : 'bg-white border-blue-400 hover:border-blue-600 hover:shadow-md'
+            }`}
+          >
+            <div className="flex items-start sm:items-center gap-3.5 min-w-0">
+              <div className={`p-3 rounded-full flex-shrink-0 ${
+                isChiSeiComplete && !isChiSeiMissingDetails
+                  ? 'bg-emerald-100 text-emerald-700'
+                  : 'bg-blue-100 text-blue-700'
+              }`}>
+                <span className="text-2xl">{dataTest.icon}</span>
+              </div>
+              <div className="min-w-0">
+                <h3 className="font-serif font-bold text-lg text-gray-900">
+                  {dataTest.title}
+                </h3>
+                <p className="text-sm text-gray-700 mt-0.5 leading-snug">
+                  {!isChiSeiComplete
+                    ? 'Inizia da qui: inserisci nome, età, genere e il tema che vuoi esplorare per personalizzare voce e test.'
+                    : isChiSeiMissingDetails
+                    ? `Dati parziali (${userData.nome || ''}): completa età e genere per poter svolgere tutti i test.`
+                    : `Dati salvati: ${userData.nome || ''} (${userData.eta || ''} anni). Tocca per rivedere o modificare.`}
+                </p>
+              </div>
             </div>
-          </div>
-          <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-800 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-200 flex-shrink-0 hidden sm:inline-block">
-            Autoconoscenza
-          </span>
-        </div>
-        <p className="text-xs sm:text-sm text-slate-700 leading-relaxed">
-          L’<strong>Analogista Virtuale</strong> è un assistente pratico basato sulle Discipline Analogiche di Stefano Benemeglio e sviluppato da Max Pisani per il libro <em>Smettila di Soffrire</em>. Rileva attraverso la camera le micro-oscillazioni corpore istintive del soggetto (oscillazione avanti per il SÌ / indietro per il NO) per guidare l'ascolto profondo dell'inconscio in sicurezza.
-        </p>
-        <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 sm:p-3.5 text-xs text-slate-600 leading-relaxed space-y-1.5">
-          <p>
-            <strong>Come usarlo con il libro:</strong> Segui la lettura ed esegui i test della Consolle qui sotto. La prima sezione raccoglie i 5 test di base; gli Approfondimenti permettono di esplorare gli eventi nel tempo. La fase di Check-in è attualmente in anteprima non attiva.
-          </p>
-          <p className="text-[11px] text-slate-500 italic">
-            Strumento di esplorazione personale secondo il modello DAB: non fornisce diagnosi, prove certe di una causa né garanzie di risoluzione o superamento delle distonie.
-          </p>
-        </div>
-      </div>
+            {isChiSeiComplete && !isChiSeiMissingDetails ? (
+              <span className="self-start sm:self-center inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-emerald-800 bg-emerald-100 px-3 py-1.5 rounded-lg border border-emerald-300 whitespace-nowrap">
+                ✓ Salvati
+              </span>
+            ) : (
+              <span className="self-start sm:self-center text-xs font-bold uppercase tracking-wider text-white bg-blue-600 px-4 py-2 rounded-xl shadow-xs whitespace-nowrap">
+                {isChiSeiComplete ? 'Completa i dati →' : 'Inserisci i dati →'}
+              </span>
+            )}
+          </button>
+        </section>
+      )}
 
-      {/* CONSOLLE: IL TUO PERCORSO CON IL LIBRO */}
+      {/* 3. PRIMA DEI TEST: COME POSIZIONARSI E CALIBRAZIONE (CON AVVERTENZE SEMPRE VISIBILI) */}
+      <section className="bg-slate-900 text-white rounded-2xl p-4 sm:p-5 shadow-md border-2 border-slate-800 space-y-4">
+        <div className="flex items-start gap-3">
+          <span className="text-2xl sm:text-3xl p-2 rounded-xl bg-slate-800 border border-slate-700 flex-shrink-0">🧍</span>
+          <div className="min-w-0">
+            <h3 className="font-serif font-bold text-lg sm:text-xl text-cyan-300 leading-snug">
+              Come posizionarsi e calibrazione
+            </h3>
+            <p className="text-sm text-slate-300 mt-0.5 leading-relaxed">
+              Prima di avviare i test, leggi le avvertenze qui sotto, verifica la postura corretta e calibra la fotocamera.
+            </p>
+          </div>
+        </div>
+
+        {/* Avvertenze sempre visibili e ben leggibili */}
+        <div className="bg-amber-50 text-amber-950 rounded-xl border-2 border-amber-300 p-4 space-y-2">
+          <h4 className="font-bold text-sm sm:text-base flex items-center gap-2 text-amber-900">
+            <span>⚠️</span> Avvertenze importanti prima di iniziare
+          </h4>
+          <ul className="list-disc list-inside text-xs sm:text-sm space-y-1.5 leading-relaxed">
+            <li>Esegui i test <strong>in piedi</strong>, vicino a una <strong>parete</strong> o con una <strong>sedia alle spalle</strong> per maggiore appoggio e stabilità.</li>
+            <li><strong>Non eseguire i test in caso di vertigini o problemi di equilibrio.</strong></li>
+            <li>Esegui i test <strong>solo su di te</strong>, mai su altre persone.</li>
+            <li>Puoi <strong>fermarti quando vuoi</strong> in qualsiasi momento.</li>
+            <li><strong>Sintomi e malattie vanno sempre portati al medico</strong>; i test non sono una diagnosi né una terapia.</li>
+          </ul>
+        </div>
+
+        {/* Azioni chiare per Postura e Calibrazione */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <button
+            type="button"
+            onClick={() => { setAudioEnabled(false); setActiveTest('laTecnica'); }}
+            className="w-full bg-slate-800 hover:bg-slate-700 text-white border border-slate-600 font-bold py-3 px-4 rounded-xl transition text-sm flex items-center justify-center gap-2"
+          >
+            <span>🧍</span>
+            <span>Leggi come posizionarsi</span>
+          </button>
+
+          {calibrazioneTest && (
+            <button
+              type="button"
+              onClick={() => { setAudioEnabled(false); setActiveTest(calibrazioneTest.id); }}
+              className="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-3 px-4 rounded-xl shadow transition text-sm flex items-center justify-center gap-2"
+            >
+              <span>🎯</span>
+              <span>{isCalibrazioneDone ? '✓ Calibrazione fatta (Ricalibra)' : 'Apri calibrazione fotocamera'}</span>
+            </button>
+          )}
+        </div>
+      </section>
+
+      {/* 4. SCHEDA CENTRALE E PIÙ EVIDENTE: IL TUO PERCORSO CON IL LIBRO */}
       <BookConsole
         onSelectTest={(id) => handleNavigation(id)}
         completedTests={userData.completedTests}
       />
 
-      {/* HEADER: Progress Bar & Status (Test singoli indipendenti) */}
-      <div className="bg-gradient-to-r from-blue-700 via-indigo-700 to-blue-900 backdrop-blur rounded-2xl p-4 text-white shadow-lg relative overflow-hidden flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border border-white/20">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="text-xl">📊</span>
-            <h2 className="text-lg font-serif font-bold leading-tight">I Tuoi Test Analogici</h2>
-          </div>
-          <p className="text-blue-100 text-xs mt-1">
-            Ogni test è <strong>indipendente</strong>: scegli liberamente da quale iniziare in base a ciò che desideri esplorare.
-          </p>
-        </div>
-        <div className="flex flex-col items-end w-full sm:w-1/3">
-          <div className="flex items-center justify-between w-full text-xs font-bold text-blue-200">
-            <span>Test singoli: {completedCount}/{totalCount}</span>
-            <span className="text-xl font-bold text-white">{progressPercent}%</span>
-          </div>
-          <div className="w-full bg-blue-950/60 rounded-full h-2 mt-1.5 overflow-hidden">
-            <div 
-              className="bg-gradient-to-r from-cyan-400 to-emerald-400 h-2 rounded-full transition-all duration-1000 ease-out"
-              style={{ width: `${progressPercent}%` }}
-            ></div>
-          </div>
-        </div>
-      </div>
-
-      {/* QUICK LINK AL REPORT FINALE */}
-      <div className="bg-gradient-to-r from-emerald-600 to-teal-700 text-white rounded-2xl p-4 shadow-md flex flex-col sm:flex-row items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <span className="text-3xl">📋</span>
-          <div>
-            <h4 className="font-serif font-bold text-base">Quadro Risultati & Profilo</h4>
-            <p className="text-xs text-emerald-100">Consulta il report riassuntivo dei test svolti, analisi interpretativa ed esportazione PDF.</p>
+      {/* 5. ACCESSO RAPIDO AI RISULTATI */}
+      <section className="bg-gradient-to-r from-emerald-600 to-teal-700 text-white rounded-2xl p-4 sm:p-5 shadow-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex items-start sm:items-center gap-3 min-w-0">
+          <span className="text-3xl flex-shrink-0">📋</span>
+          <div className="min-w-0">
+            <h3 className="font-serif font-bold text-base sm:text-lg">Quadro Risultati &amp; Profilo</h3>
+            <p className="text-xs sm:text-sm text-emerald-100 leading-snug">
+              Consulta il riepilogo dei test completati e scarica il report in PDF.
+            </p>
           </div>
         </div>
         <button
+          type="button"
           onClick={() => navigate('/risultati')}
-          className="w-full sm:w-auto bg-white hover:bg-emerald-50 text-emerald-900 font-bold px-6 py-2.5 rounded-xl shadow transition text-xs uppercase tracking-wider whitespace-nowrap"
+          className="w-full sm:w-auto bg-white hover:bg-emerald-50 text-emerald-900 font-bold px-6 py-3 rounded-xl shadow transition text-sm whitespace-nowrap text-center"
         >
           Vedi Risultati →
         </button>
-      </div>
-
-      {/* BLOCCO CALIBRAZIONE CORPOREA (Sempre accessibile) */}
-      <section className="bg-slate-900 text-white rounded-2xl p-4 sm:p-5 shadow-md flex flex-col sm:flex-row items-center justify-between gap-4">
-        {prepTests.map(test => {
-          const isDone = userData.completedTests?.[test.id];
-          return (
-            <div key={test.id} className="flex flex-col sm:flex-row items-center justify-between w-full gap-4">
-              <div className="flex items-center gap-3">
-                <span className="text-3xl p-2 rounded-xl bg-slate-800 border border-slate-700">🎯</span>
-                <div>
-                  <h4 className="font-serif font-bold text-base text-cyan-400">{test.title}</h4>
-                  <p className="text-xs text-slate-300">{test.description}</p>
-                </div>
-              </div>
-              <button
-                onClick={() => { setAudioEnabled(false); setActiveTest(test.id); }}
-                className="w-full sm:w-auto bg-cyan-600 hover:bg-cyan-500 text-white font-bold px-6 py-2.5 rounded-xl shadow transition text-xs uppercase tracking-wider whitespace-nowrap"
-              >
-                {isDone ? 'Ricalibra Posizione' : 'Apri Calibrazione'}
-              </button>
-            </div>
-          );
-        })}
       </section>
 
-      {/* SEZIONE: TUTTI I TEST SINGOLI (Chiusa di default, ad accesso libero) */}
-      <section className="bg-white rounded-2xl border-2 border-slate-200 shadow-sm overflow-hidden transition-all">
+      {/* 6. SEZIONE SECONDARIA APRIBILE IN BASSO: TUTTI I TEST SINGOLI */}
+      <section className="bg-slate-50/80 rounded-2xl border border-slate-200 shadow-2xs overflow-hidden transition-all">
         <button
           type="button"
           onClick={() => setShowAllTests(prev => !prev)}
-          className="w-full p-4 sm:p-5 text-left flex items-center justify-between gap-4 hover:bg-slate-50 transition cursor-pointer"
+          aria-expanded={showAllTests}
+          className="w-full p-4 sm:p-5 text-left flex items-center justify-between gap-3 hover:bg-slate-100/70 transition cursor-pointer"
         >
-          <div className="flex items-center gap-3.5 min-w-0">
-            <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-xl flex-shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-xl flex-shrink-0">
               📋
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="font-serif font-black text-base sm:text-lg text-slate-900 leading-tight">
+                <h3 className="font-serif font-bold text-base text-slate-800 leading-tight">
                   Tutti i test singoli
                 </h3>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-700 bg-slate-100 border border-slate-300 px-2 py-0.5 rounded">
-                  Accesso libero
+                <span className="text-[11px] font-semibold text-slate-600 bg-white border border-slate-300 px-2 py-0.5 rounded-md">
+                  Sezione secondaria
                 </span>
               </div>
-              <p className="text-xs text-slate-500 mt-0.5 truncate">
-                {showAllTests 
-                  ? 'Fai clic per comprimere l\'elenco completo' 
-                  : 'Apri l\'elenco per eseguire liberamente qualsiasi test in autonomia'}
+              <p className="text-xs sm:text-sm text-slate-600 mt-0.5">
+                {showAllTests
+                  ? 'Tocca per chiudere l’elenco dei singoli test'
+                  : `Apri se vuoi avviare un singolo test in autonomia (${completedCount}/${totalCount} completati)`}
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2 flex-shrink-0">
-            <span className="text-xs font-semibold text-blue-600 hidden sm:inline">
-              {showAllTests ? 'Comprimi elenco' : 'Espandi elenco'}
+            <span className="text-xs font-semibold text-blue-700 hidden sm:inline">
+              {showAllTests ? 'Chiudi' : 'Apri elenco'}
             </span>
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center bg-slate-100 text-slate-600 transition-transform duration-300 ${showAllTests ? 'rotate-180 bg-blue-50 text-blue-600' : ''}`}>
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center bg-white border border-slate-200 text-slate-600 transition-transform duration-300 ${showAllTests ? 'rotate-180 bg-blue-50 text-blue-600' : ''}`}>
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
               </svg>
@@ -388,18 +392,31 @@ const Dashboard: React.FC = () => {
         </button>
 
         {showAllTests && (
-          <div className="p-4 sm:p-6 pt-2 border-t border-slate-200 space-y-6 bg-slate-50/50 animate-fadeIn">
+          <div className="p-4 sm:p-5 pt-3 border-t border-slate-200 space-y-5 bg-slate-50 animate-fadeIn">
+            {/* Barra di avanzamento test singoli */}
+            <div className="bg-white rounded-xl p-3.5 border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="text-sm font-bold text-slate-800">
+                Test singoli completati: {completedCount}/{totalCount} ({progressPercent}%)
+              </div>
+              <div className="w-full sm:w-48 bg-slate-200 rounded-full h-2.5 overflow-hidden">
+                <div
+                  className="bg-gradient-to-r from-blue-600 to-emerald-500 h-2.5 rounded-full transition-all duration-700"
+                  style={{ width: `${progressPercent}%` }}
+                ></div>
+              </div>
+            </div>
+
             {/* SOTTO-BLOCCO: TEST ANALOGICI DI BASE & TIPOLOGIE (DAB) */}
-            <div className="bg-white rounded-xl p-4 sm:p-5 border border-slate-200 shadow-2xs space-y-4">
+            <div className="bg-white rounded-xl p-4 sm:p-5 border border-slate-200 space-y-4">
               <div className="border-b border-slate-100 pb-2">
                 <div className="flex items-center gap-2">
                   <span className="text-xl">🔺</span>
-                  <h3 className="text-base sm:text-lg font-serif font-black text-gray-900">
-                    Test Tipologie & Dinamiche Emotive (DAB)
-                  </h3>
+                  <h4 className="text-base font-serif font-bold text-gray-900">
+                    Test di base (Fase 1)
+                  </h4>
                 </div>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  Test comportamentali per scoprire tipologia di personalità (Asta, Cerchio, Triangolo), induttori, riconoscimento dell'identità e blocchi.
+                <p className="text-xs sm:text-sm text-gray-600 mt-0.5">
+                  Tipologia T.A.P., Induttore, Nome, Punti Distonici e Sigilli/Vincoli.
                 </p>
               </div>
 
@@ -409,28 +426,29 @@ const Dashboard: React.FC = () => {
                   return (
                     <button
                       key={test.id}
+                      type="button"
                       onClick={() => { setAudioEnabled(false); setActiveTest(test.id); }}
-                      className={`p-4 rounded-xl text-left transition-all border-2 flex items-start space-x-3.5 group hover:shadow-md ${
-                        isDone 
-                          ? 'bg-emerald-50/70 border-emerald-300 hover:bg-emerald-100/70' 
+                      className={`p-4 rounded-xl text-left transition-all border-2 flex items-start space-x-3 group hover:shadow-sm ${
+                        isDone
+                          ? 'bg-emerald-50/70 border-emerald-300 hover:bg-emerald-100/70'
                           : 'bg-slate-50/80 border-slate-200 hover:border-blue-400 hover:bg-white'
                       }`}
                     >
-                      <span className="text-2xl p-2 rounded-lg bg-white border border-slate-200 shadow-sm group-hover:scale-110 transition-transform">
+                      <span className="text-2xl p-2 rounded-lg bg-white border border-slate-200 shadow-2xs flex-shrink-0">
                         {test.icon}
                       </span>
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between">
-                          <h4 className="font-serif font-bold text-sm sm:text-base text-gray-900 leading-tight">
+                        <div className="flex items-center justify-between gap-2">
+                          <h5 className="font-serif font-bold text-sm sm:text-base text-gray-900 leading-tight">
                             {test.title}
-                          </h4>
-                          {isDone && <span className="text-emerald-600 text-lg font-bold ml-2">✓</span>}
+                          </h5>
+                          {isDone && <span className="text-emerald-600 text-lg font-bold flex-shrink-0">✓</span>}
                         </div>
                         <p className="text-xs text-gray-600 mt-1 line-clamp-2">
                           {test.description}
                         </p>
-                        <span className="inline-block mt-2 text-[11px] font-bold text-blue-600 group-hover:underline">
-                          {isDone ? 'Ripeti Test →' : 'Avvia Test →'}
+                        <span className="inline-block mt-2 text-xs font-bold text-blue-600 group-hover:underline">
+                          {isDone ? 'Ripeti test →' : 'Avvia test →'}
                         </span>
                       </div>
                     </button>
@@ -440,16 +458,16 @@ const Dashboard: React.FC = () => {
             </div>
 
             {/* SOTTO-BLOCCO: LINEA DEL TEMPO & INDAGINE SULL'EVENTO CAUSA */}
-            <div className="bg-white rounded-xl p-4 sm:p-5 border border-slate-200 shadow-2xs space-y-4">
+            <div className="bg-white rounded-xl p-4 sm:p-5 border border-slate-200 space-y-4">
               <div className="border-b border-slate-100 pb-2">
                 <div className="flex items-center gap-2">
                   <span className="text-xl">🧭</span>
-                  <h3 className="text-base sm:text-lg font-serif font-black text-gray-900">
-                    Linea del Tempo & Ricerca dell'Evento Causa
-                  </h3>
+                  <h4 className="text-base font-serif font-bold text-gray-900">
+                    Approfondimenti nel tempo (Fase 2)
+                  </h4>
                 </div>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  Calcola la Time Line, individua l'età dell'evento causa, la data esatta e il testimone chiave in autonomia.
+                <p className="text-xs sm:text-sm text-gray-600 mt-0.5">
+                  Indietro nel Tempo, Quale Giorno e Testimone &amp; Torto in autonomia.
                 </p>
               </div>
 
@@ -462,34 +480,35 @@ const Dashboard: React.FC = () => {
                   return (
                     <button
                       key={test.id}
+                      type="button"
                       onClick={() => { setAudioEnabled(false); setActiveTest(test.id); }}
-                      className={`p-4 rounded-xl text-left transition-all border-2 flex items-start space-x-3.5 group hover:shadow-md ${
-                        isDone 
-                          ? 'bg-blue-50/70 border-blue-300 hover:bg-blue-100/70' 
+                      className={`p-4 rounded-xl text-left transition-all border-2 flex items-start space-x-3 group hover:shadow-sm ${
+                        isDone
+                          ? 'bg-blue-50/70 border-blue-300 hover:bg-blue-100/70'
                           : 'bg-slate-50/80 border-slate-200 hover:border-indigo-400 hover:bg-white'
                       }`}
                     >
-                      <span className="text-2xl p-2 rounded-lg bg-white border border-slate-200 shadow-sm group-hover:scale-110 transition-transform">
+                      <span className="text-2xl p-2 rounded-lg bg-white border border-slate-200 shadow-2xs flex-shrink-0">
                         {test.icon}
                       </span>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-2 flex-wrap">
-                          <h4 className="font-serif font-bold text-sm sm:text-base text-gray-900 leading-tight">
+                          <h5 className="font-serif font-bold text-sm sm:text-base text-gray-900 leading-tight">
                             {test.title}
-                          </h4>
+                          </h5>
                           {isFromGrandeIndagine ? (
                             <span className="text-[11px] font-bold text-blue-700 bg-blue-100 border border-blue-200 px-2 py-0.5 rounded-md whitespace-nowrap">
                               ✓ da Grande Indagine
                             </span>
                           ) : isDone ? (
-                            <span className="text-blue-600 text-lg font-bold ml-2">✓</span>
+                            <span className="text-blue-600 text-lg font-bold flex-shrink-0">✓</span>
                           ) : null}
                         </div>
                         <p className="text-xs text-gray-600 mt-1 line-clamp-2">
                           {test.description}
                         </p>
-                        <span className="inline-block mt-2 text-[11px] font-bold text-indigo-600 group-hover:underline">
-                          {isDone ? 'Ripeti Indagine →' : 'Avvia Indagine →'}
+                        <span className="inline-block mt-2 text-xs font-bold text-indigo-600 group-hover:underline">
+                          {isDone ? 'Ripeti indagine →' : 'Avvia indagine →'}
                         </span>
                       </div>
                     </button>
@@ -497,7 +516,6 @@ const Dashboard: React.FC = () => {
                 })}
               </div>
             </div>
-
           </div>
         )}
       </section>
