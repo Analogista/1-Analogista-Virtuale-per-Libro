@@ -85,7 +85,7 @@ const Dashboard: React.FC = () => {
       setHeader('Ricerca Cause Profonde', 'Fase 2 — Approfondimenti sulle cause nel tempo');
       setProMode(false);
     } else if (activeTest === 'fase3') {
-      setHeader('Verifica Periodica nel Tempo (In prova)', 'Fase 3 — Versione di prova solo locale sul dispositivo');
+      setHeader('Tornare sui tuoi punti nel tempo (In prova)', 'Fase 3 — Versione di prova solo locale sul dispositivo');
       setProMode(false);
     } else if (activeTest) {
       const test = tests.find(t => t.id === activeTest);

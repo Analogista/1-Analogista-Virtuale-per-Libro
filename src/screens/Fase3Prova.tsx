@@ -253,8 +253,11 @@ const Fase3Prova: React.FC<ScreenProps> = ({ setPage }) => {
           <span className="text-2xl flex-shrink-0">🗓️</span>
           <div className="space-y-1">
             <h1 className="font-serif font-black text-xl sm:text-2xl text-slate-900">
-              Verifica periodica nel tempo (Versione di prova)
+              Tornare sui tuoi punti nel tempo (Versione di prova)
             </h1>
+            <p className="text-sm font-semibold text-slate-800">
+              T0 è la fotografia del tuo punto di partenza
+            </p>
             <p className="text-sm text-slate-700 leading-relaxed">
               Questa funzione è attiva esclusivamente in locale sul tuo dispositivo (nessun dato viene inviato a Firestore). Permette di fissare una fotografia iniziale <strong>T0</strong> non modificabile da questa schermata e registrare verifiche successive su scala <strong>0–10</strong>.
             </p>

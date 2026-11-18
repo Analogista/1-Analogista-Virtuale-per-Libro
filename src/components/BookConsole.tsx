@@ -254,7 +254,7 @@ export const BookConsole: React.FC<BookConsoleProps> = ({ onSelectTest, complete
                   </span>
                 </div>
                 <p className="text-xs sm:text-sm font-medium text-slate-600 mt-0.5">
-                  Tornare sui tuoi punti nel tempo — verifica periodica (in prova, solo locale)
+                  Tornare sui tuoi punti nel tempo (in prova, solo locale)
                 </p>
               </div>
             </div>
