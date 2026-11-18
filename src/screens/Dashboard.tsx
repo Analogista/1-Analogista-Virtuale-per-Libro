@@ -18,6 +18,7 @@ import IndagineSingola from './IndagineSingola';
 import QualeGiorno from './QualeGiorno';
 import TestimoneChiave from './TestimoneChiave';
 import RicercaCause from './RicercaCause';
+import Fase3Prova from './Fase3Prova';
 import { BookConsole } from '../components/BookConsole';
 import { AdvancedVoiceService } from '../services/AdvancedVoiceService';
 
@@ -83,6 +84,9 @@ const Dashboard: React.FC = () => {
     if (activeTest === 'ricercaCause') {
       setHeader('Ricerca Cause Profonde', 'Fase 2 — Approfondimenti sulle cause nel tempo');
       setProMode(false);
+    } else if (activeTest === 'fase3') {
+      setHeader('Verifica Periodica nel Tempo (In prova)', 'Fase 3 — Versione di prova solo locale sul dispositivo');
+      setProMode(false);
     } else if (activeTest) {
       const test = tests.find(t => t.id === activeTest);
       if (test) {
@@ -109,7 +113,7 @@ const Dashboard: React.FC = () => {
         navigate('/risultati');
         return;
       }
-      if (destination === 'ricercaCause' || tests.some(t => t.id === destination)) {
+      if (destination === 'ricercaCause' || destination === 'fase3' || tests.some(t => t.id === destination)) {
         setActiveTest(destination);
         return;
       }
@@ -132,6 +136,10 @@ const Dashboard: React.FC = () => {
 
   if (activeTest === 'ricercaCause') {
     return <RicercaCause setPage={handleNavigation} completedTests={userData.completedTests} />;
+  }
+
+  if (activeTest === 'fase3') {
+    return <Fase3Prova setPage={handleNavigation} />;
   }
 
   if (activeTest) {
@@ -200,7 +208,7 @@ const Dashboard: React.FC = () => {
               <p className="font-bold text-slate-900">Come seguire il percorso:</p>
               <p>1. Inserisci i tuoi dati qui sotto.</p>
               <p>2. Leggi come posizionarti ed esegui la calibrazione della fotocamera.</p>
-              <p>3. Segui le tappe di <strong>«Il tuo percorso con il libro»</strong> (prima la Fase 1 con i 5 test iniziali, poi la Fase 2 per gli approfondimenti nel tempo; la Fase 3 è solo un’anteprima non ancora disponibile).</p>
+              <p>3. Segui le tappe di <strong>«Il tuo percorso con il libro»</strong> (prima la Fase 1 con i 5 test iniziali, poi la Fase 2 per gli approfondimenti nel tempo; la Fase 3 è disponibile in prova solo sul dispositivo).</p>
             </div>
             <p className="text-xs text-slate-600 bg-white border border-slate-200 rounded-xl p-3">
               Strumento di esplorazione personale secondo il modello DAB: non fornisce diagnosi mediche o psicologiche, prove certe di una causa né garanzie di risoluzione o superamento delle distonie.

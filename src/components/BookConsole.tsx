@@ -230,7 +230,7 @@ export const BookConsole: React.FC<BookConsoleProps> = ({ onSelectTest, complete
         </div>
 
         {/* ========================================================= */}
-        {/* FASE 3: Check-in e nuovo ciclo (Anteprima — Non ancora disponibile) */}
+        {/* FASE 3: Check-in e nuovo ciclo (In prova — Solo locale)   */}
         {/* ========================================================= */}
         <div className="rounded-xl border-2 border-dashed border-slate-300 bg-slate-50/90 overflow-hidden transition-all">
           <button
@@ -250,11 +250,11 @@ export const BookConsole: React.FC<BookConsoleProps> = ({ onSelectTest, complete
                     Check-in e nuovo ciclo
                   </h3>
                   <span className="text-[11px] font-bold uppercase tracking-wider text-amber-900 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded">
-                    Anteprima • Non ancora disponibile
+                    In prova
                   </span>
                 </div>
                 <p className="text-xs sm:text-sm font-medium text-slate-600 mt-0.5">
-                  Tornare sui tuoi punti nel tempo — verifica periodica (in preparazione)
+                  Tornare sui tuoi punti nel tempo — verifica periodica (in prova, solo locale)
                 </p>
               </div>
             </div>
@@ -277,22 +277,22 @@ export const BookConsole: React.FC<BookConsoleProps> = ({ onSelectTest, complete
           {isPhase3Open && (
             <div className="px-4 pb-4 pt-2 border-t border-slate-200 animate-fadeIn">
               <p className="text-xs sm:text-sm text-slate-700 leading-relaxed mb-3">
-                <strong>Solo anteprima:</strong> questa fase è <strong>non ancora disponibile</strong>. Sarà dedicata a futuri momenti di auto-osservazione personale secondo il modello DAB (non costituisce diagnosi, prova certa di una causa né promessa di risoluzione).
+                <strong>Versione in prova (solo locale):</strong> i dati restano salvati esclusivamente su questo dispositivo senza accesso al Cloud, secondo il modello DAB (non costituisce diagnosi, prova certa di una causa né promessa di risoluzione).
               </p>
 
               <div className="p-3.5 rounded-xl bg-white border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex items-center gap-2 text-xs sm:text-sm text-slate-600">
-                  <span className="text-base flex-shrink-0">🔒</span>
+                  <span className="text-base flex-shrink-0">🧪</span>
                   <span className="leading-snug">
-                    Questa fase non è attiva al momento.
+                    Fissa la fotografia T0 sul dispositivo e registra verifiche 0–10 nel tempo.
                   </span>
                 </div>
                 <button
                   type="button"
-                  disabled
-                  className="py-2 px-4 rounded-lg bg-slate-200 text-slate-600 text-xs font-bold uppercase tracking-wider cursor-not-allowed whitespace-nowrap self-start sm:self-auto"
+                  onClick={() => onSelectTest('fase3')}
+                  className="py-2 px-4 rounded-lg bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold uppercase tracking-wider whitespace-nowrap self-start sm:self-auto transition cursor-pointer"
                 >
-                  Non ancora disponibile
+                  Apri Fase 3 (in prova) →
                 </button>
               </div>
             </div>
