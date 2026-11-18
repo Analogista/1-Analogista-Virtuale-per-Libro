@@ -1,5 +1,5 @@
 
-/* © 2026 Max Pisani - PACommunication. Tutti i diritti riservati. */
+/* © 2027 Max Pisani - PACommunication. Tutti i diritti riservati. */
 import React from 'react';
 import { Routes, Route, useLocation } from 'react-router-dom';
 import { UserProvider } from './contexts/UserContext';
@@ -17,6 +17,7 @@ import History from './screens/History';
 import { AdvancedVoiceService } from './services/AdvancedVoiceService';
 
 import { AuthGate } from './components/AuthGate';
+import ErrorBoundary from './components/ErrorBoundary';
 import { Toaster } from 'react-hot-toast';
 
 const App: React.FC = () => {
@@ -26,7 +27,9 @@ const App: React.FC = () => {
         <UserProvider>
           <HeaderProvider>
             <AuthGate>
-              <AppContent />
+              <ErrorBoundary>
+                <AppContent />
+              </ErrorBoundary>
             </AuthGate>
             <Toaster position="top-center" />
           </HeaderProvider>
@@ -98,7 +101,7 @@ const AppContent: React.FC = () => {
           {/* Legal Copyright Footer */}
           {!isProMode && (
             <footer className="py-4 text-center text-xs text-gray-500 border-t border-gray-200/80 bg-slate-50/80 px-4">
-              <p>© 2026 Max Pisani - PACommunication. Tutti i diritti riservati.</p>
+              <p>© 2027 Max Pisani - PACommunication. Tutti i diritti riservati.</p>
             </footer>
           )}
         </div>

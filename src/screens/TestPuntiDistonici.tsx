@@ -1,4 +1,4 @@
-/* © 2026 Max Pisani - PACommunication. Tutti i diritti riservati. */
+/* © 2027 Max Pisani - PACommunication. Tutti i diritti riservati. */
 import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../contexts/UserContext';
@@ -33,6 +33,13 @@ const TestPuntiDistonici: React.FC<ScreenProps> = ({ setPage }) => {
   const { userData, setUserData } = useUser();
   const [status, setStatus] = useState<'IDLE' | 'CALIBRATING' | 'TESTING' | 'SELECTING' | 'SUCCESS'>('IDLE');
   const [message, setMessage] = useState('Premi "Inizia Calibrazione" per avviare il test dei punti distonici.');
+  const [nonApplicabili, setNonApplicabili] = useState<Record<PuntoKey, boolean>>({
+    famiglia: userData.puntiDistonici?.famiglia === 'NON_APPLICABILE',
+    famigliaAcquisita: userData.puntiDistonici?.famigliaAcquisita === 'NON_APPLICABILE',
+    sentimentali: userData.puntiDistonici?.sentimentali === 'NON_APPLICABILE',
+    sessuali: userData.puntiDistonici?.sessuali === 'NON_APPLICABILE',
+    autorealizzazione: userData.puntiDistonici?.autorealizzazione === 'NON_APPLICABILE',
+  });
   const [results, setResults] = useState<Partial<Record<PuntoKey, string>>>(userData.puntiDistonici || {});
   const [selectedPunto, setSelectedPunto] = useState<string>(userData.puntoDistonicoFinale || '');
   const [isCameraReady, setIsCameraReady] = useState(false);
@@ -73,13 +80,31 @@ const TestPuntiDistonici: React.FC<ScreenProps> = ({ setPage }) => {
     startTest();
   };
 
+  const applicableKeys = (Object.keys(puntiMapping) as PuntoKey[]).filter(k => !nonApplicabili[k]);
+
+  const toggleAreaApplicability = (key: PuntoKey) => {
+    if (status !== 'IDLE') return;
+    setNonApplicabili(prev => {
+      const next = { ...prev, [key]: !prev[key] };
+      setResults(curr => ({
+        ...curr,
+        [key]: next[key] ? 'NON_APPLICABILE' : ''
+      }));
+      return next;
+    });
+  };
+
   const handleRepeat = () => {
     guardRef.current?.cancel();
     voiceService.cancel();
     setStatus('IDLE');
     setIsCalibrated(false);
     setMessage('Premi "Inizia Calibrazione" per ricominciare il test.');
-    setResults({});
+    const initialResults: Partial<Record<PuntoKey, string>> = {};
+    (Object.keys(puntiMapping) as PuntoKey[]).forEach(k => {
+      if (nonApplicabili[k]) initialResults[k] = 'NON_APPLICABILE';
+    });
+    setResults(initialResults);
     setSelectedPunto('');
   };
 
@@ -106,19 +131,37 @@ const TestPuntiDistonici: React.FC<ScreenProps> = ({ setPage }) => {
   };
 
   const startTest = async () => {
+    if (applicableKeys.length === 0) {
+      setStatus('IDLE');
+      setIsCalibrated(false);
+      setMessage('Seleziona almeno un\'area applicabile prima di avviare il test.');
+      return;
+    }
+
     setStatus('TESTING');
-    setResults({});
     const currentPuntiDistonici: Record<string, string> = {};
+    (Object.keys(puntiMapping) as PuntoKey[]).forEach(k => {
+      currentPuntiDistonici[k] = nonApplicabili[k] ? 'NON_APPLICABILE' : '';
+    });
+    setResults(currentPuntiDistonici);
     const nome = userData.nome ? userData.nome : 'Amico';
 
     guardRef.current?.cancel();
     const guard = new SessionGuard(() => voiceService.cancel());
     guardRef.current = guard;
     try {
-      await voiceService.speak(`Caro inconscio di ${nome}, adesso verifichiamo le 5 aree fondamentali della tua vita per individuare eventuali punti distonici.`);
+      await voiceService.speak(
+        applicableKeys.length === 5
+          ? `Caro inconscio di ${nome}, adesso verifichiamo le 5 aree fondamentali della tua vita per individuare eventuali punti distonici.`
+          : `Caro inconscio di ${nome}, adesso verifichiamo le ${applicableKeys.length} aree applicabili della tua vita per individuare eventuali punti distonici.`
+      );
       if (guard.isCancelled()) return;
 
       for (const punto of Object.keys(puntiMapping) as PuntoKey[]) {
+        if (nonApplicabili[punto]) {
+          currentPuntiDistonici[punto] = 'NON_APPLICABILE';
+          continue;
+        }
         setMessage(`Indagine in corso: ${puntiMapping[punto]}...`);
         const text = `Caro inconscio, sei soddisfatto di come ${nome} sta gestendo ${puntiVoiceMapping[punto]}? Sì o No? Attendo risposta.`;
         const res = await voiceService.askQuestionWithSingleRetry(text);
@@ -135,10 +178,27 @@ const TestPuntiDistonici: React.FC<ScreenProps> = ({ setPage }) => {
       }));
 
       // In analogic disciplines, 'NO' means dissatisfaction / distonic point
-      const nonSoddisfatti = (Object.keys(currentPuntiDistonici) as PuntoKey[]).filter(k => currentPuntiDistonici[k] === 'NO');
+      const nonSoddisfatti = applicableKeys.filter(k => currentPuntiDistonici[k] === 'NO');
+      const hasMissingApplicable = applicableKeys.some(k => currentPuntiDistonici[k] !== 'SI' && currentPuntiDistonici[k] !== 'NO');
 
       if (nonSoddisfatti.length === 0) {
-        await completeTest('Nessun punto distonico', 'Ottimo! Nessun punto distonico rilevato: tutte e 5 le aree risultano in equilibrio.');
+        if (hasMissingApplicable) {
+          setSelectedPunto('');
+          setMessage('Alcune aree applicabili non sono state rilevate. Puoi ripetere il test per completare tutte le risposte.');
+          setStatus('SUCCESS');
+          setUserData(prev => ({
+            ...prev,
+            puntoDistonicoFinale: '',
+            completedTests: { ...prev.completedTests, puntiDistonici: false }
+          }));
+        } else {
+          await completeTest(
+            'Nessun punto distonico',
+            applicableKeys.length === 5
+              ? 'Ottimo! Nessun punto distonico rilevato: tutte e 5 le aree risultano in equilibrio.'
+              : 'Ottimo! Nessun punto distonico rilevato nelle aree applicabili.'
+          );
+        }
       } else if (nonSoddisfatti.length === 1) {
         const unicoPunto = puntiMapping[nonSoddisfatti[0]];
         await completeTest(unicoPunto, `Punto distonico identificato: ${unicoPunto}.`);
@@ -209,9 +269,46 @@ const TestPuntiDistonici: React.FC<ScreenProps> = ({ setPage }) => {
 
       <InfoBox>
         <p>
-          Posizionati in piedi di fronte alla webcam con il busto centrato. Il test indaga in ordine le 5 aree fondamentali della vita: <strong>famiglia d'origine</strong>; <strong>famiglia acquisita</strong> (matrimonio o convivenza: partner, eventuali figli, suoceri e altri parenti acquisiti); <strong>relazioni sentimentali e affettive</strong>; <strong>relazioni passionali e sessuali</strong>; <strong>autorealizzazione, hobby e lavoro</strong>.
+          Posizionati in piedi di fronte alla webcam con il busto centrato. Il test indaga in ordine le 5 aree fondamentali della vita: <strong>famiglia d'origine</strong>; <strong>famiglia acquisita</strong> (matrimonio o convivenza: partner, eventuali figli, suoceri e altri parenti acquisiti); <strong>relazioni sentimentali e affettive</strong>; <strong>relazioni passionali e sessuali</strong>; <strong>autorealizzazione, hobby e lavoro</strong>. Se un'area non riguarda la tua situazione attuale (es. famiglia acquisita assente), puoi contrassegnarla come <strong>Non applicabile</strong> prima di iniziare.
         </p>
       </InfoBox>
+
+      {/* Selezione aree non applicabili (prima dell'avvio) */}
+      <div className="my-4 p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-xs font-bold uppercase tracking-wider text-slate-700">
+            Aree incluse nel test ({applicableKeys.length} su 5 applicabili)
+          </p>
+          <span className="text-[11px] text-slate-500">
+            Tocca un'area per marcarla come «Non applicabile»
+          </span>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {(Object.keys(puntiMapping) as PuntoKey[]).map(key => {
+            const isExcluded = nonApplicabili[key];
+            return (
+              <button
+                key={key}
+                type="button"
+                disabled={status !== 'IDLE'}
+                onClick={() => toggleAreaApplicability(key)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition ${
+                  isExcluded
+                    ? 'bg-slate-200 border-slate-300 text-slate-600 line-through'
+                    : 'bg-white border-orange-300 text-slate-800 hover:bg-orange-50'
+                } ${status !== 'IDLE' ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
+              >
+                {isExcluded ? `Non applicabile: ${puntiMapping[key]}` : `✓ ${puntiMapping[key]}`}
+              </button>
+            );
+          })}
+        </div>
+        {applicableKeys.length === 0 && (
+          <p className="text-xs font-semibold text-red-700">
+            Seleziona almeno un'area applicabile per poter avviare il test.
+          </p>
+        )}
+      </div>
 
       {/* Camera View */}
       <div className="my-6">
@@ -220,6 +317,7 @@ const TestPuntiDistonici: React.FC<ScreenProps> = ({ setPage }) => {
           videoRef={videoRef}
           onReady={handleCameraReady}
           onCalibrated={handleCalibrated}
+          sensitivity={userData.sensibilita ?? 75}
           showCalibrationButton={false}
         />
       </div>
@@ -229,7 +327,7 @@ const TestPuntiDistonici: React.FC<ScreenProps> = ({ setPage }) => {
         {status === 'IDLE' && !isCalibrated && (
           <button
             onClick={startCalibration}
-            disabled={!isCameraReady}
+            disabled={!isCameraReady || applicableKeys.length === 0}
             className="w-full sm:w-auto bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-3.5 px-8 rounded-xl shadow-lg transition duration-300 disabled:bg-gray-400 uppercase tracking-widest text-sm"
           >
             Inizia Calibrazione e Test
@@ -261,9 +359,10 @@ const TestPuntiDistonici: React.FC<ScreenProps> = ({ setPage }) => {
         </p>
         <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
           {(Object.keys(puntiMapping) as PuntoKey[]).map(key => {
-            const val = results[key];
+            const val = nonApplicabili[key] ? 'NON_APPLICABILE' : results[key];
             const isDistonic = val === 'NO';
             const isArmonico = val === 'SI';
+            const isNA = val === 'NON_APPLICABILE';
             return (
               <div
                 key={key}
@@ -272,6 +371,8 @@ const TestPuntiDistonici: React.FC<ScreenProps> = ({ setPage }) => {
                     ? 'bg-amber-50 border-amber-300 text-amber-900 font-bold'
                     : isArmonico
                     ? 'bg-emerald-50 border-emerald-300 text-emerald-900'
+                    : isNA
+                    ? 'bg-slate-100 border-slate-200 text-slate-500'
                     : 'bg-white border-slate-200 text-slate-500'
                 }`}
               >
@@ -280,7 +381,13 @@ const TestPuntiDistonici: React.FC<ScreenProps> = ({ setPage }) => {
                   {key === 'famigliaAcquisita' ? ' (partner, figli, suoceri)' : ''}
                 </span>
                 <span className="font-bold text-xs uppercase px-2 py-0.5 rounded">
-                  {val === 'SI' ? '✓ Soddisfatto' : val === 'NO' ? '⚠️ Distonia' : '-'}
+                  {val === 'SI'
+                    ? '✓ Soddisfatto'
+                    : val === 'NO'
+                    ? '⚠️ Distonia'
+                    : val === 'NON_APPLICABILE'
+                    ? 'Non applicabile'
+                    : '-'}
                 </span>
               </div>
             );
@@ -306,7 +413,7 @@ const TestPuntiDistonici: React.FC<ScreenProps> = ({ setPage }) => {
             </p>
             <p className="text-xs text-slate-600 mt-1">
               {selectedPunto === 'Nessun punto distonico'
-                ? 'Tutte le 5 aree di vita analizzate risultano in equilibrio analogico.'
+                ? 'Tutte le aree applicabili analizzate risultano in equilibrio analogico.'
                 : selectedPunto
                 ? `L'inconscio segnala che i blocchi emotivi attuali si riflettono principalmente su: ${selectedPunto}.`
                 : 'Nessun punto distonico prioritario identificato. Puoi ripetere il test in un altro momento.'}

@@ -1,4 +1,4 @@
-/* © 2026 Max Pisani - PACommunication. Tutti i diritti riservati. */
+/* © 2027 Max Pisani - PACommunication. Tutti i diritti riservati. */
 import { jsPDF } from 'jspdf';
 import { UserData } from '../types';
 import {
@@ -192,7 +192,13 @@ export function buildResultsPdf(
   addSubHeading('Test Punti Distonici (5 aree)');
   if (data.puntiDistonici.isPartial) {
     addParagraph(
-      `- Stato rilevazione: Risultato parziale (${data.puntiDistonici.validCount} su ${data.puntiDistonici.totalCount} risposte valide; dati mancanti: ${data.puntiDistonici.missingLabels.join(', ')})`,
+      `- Stato rilevazione: Risultato parziale (${data.puntiDistonici.validCount} su ${data.puntiDistonici.applicableCount} risposte valide; dati mancanti: ${data.puntiDistonici.missingLabels.join(', ')})`,
+      { indent: 2 }
+    );
+  }
+  if (data.puntiDistonici.areeNonApplicabili.length > 0) {
+    addParagraph(
+      `- Aree contrassegnate come non applicabili: ${data.puntiDistonici.areeNonApplicabili.join(', ')}`,
       { indent: 2 }
     );
   }
@@ -204,12 +210,14 @@ export function buildResultsPdf(
     puntiEmergedText =
       data.puntiDistonici.areeDistoniche.length > 0
         ? `${data.puntiDistonici.areeDistoniche.join(', ')} (risultato parziale; mancano: ${data.puntiDistonici.missingLabels.join(', ')})`
-        : `Risultato parziale non conclusivo fino al completamento (${data.puntiDistonici.validCount} su ${data.puntiDistonici.totalCount} risposte valide; mancano: ${data.puntiDistonici.missingLabels.join(', ')})`;
+        : `Risultato parziale non conclusivo fino al completamento (${data.puntiDistonici.validCount} su ${data.puntiDistonici.applicableCount} risposte valide; mancano: ${data.puntiDistonici.missingLabels.join(', ')})`;
   } else {
     puntiEmergedText =
       data.puntiDistonici.areeDistoniche.length > 0
         ? data.puntiDistonici.areeDistoniche.join(', ')
-        : 'Nessuna area distonica emersa nelle 5 risposte';
+        : data.puntiDistonici.applicableCount === 5
+        ? 'Nessuna area distonica emersa nelle 5 risposte'
+        : `Nessuna area distonica emersa nelle ${data.puntiDistonici.applicableCount} aree applicabili`;
   }
   addParagraph(`- Aree con distonia emersa (NO): ${puntiEmergedText}`, { indent: 2 });
   for (const area of data.puntiDistonici.dettaglio) {
@@ -245,13 +253,8 @@ export function buildResultsPdf(
   }
   y += 1.4;
 
-  addSubHeading('Time Line (Ipotesi Esplorativa)');
+  addSubHeading('Età ipotizzata nel tempo (Ipotesi Esplorativa)');
   addParagraph(`- Età ipotizzata evento: ${data.timeLine.etaEventoCausa}`, { indent: 2 });
-  addParagraph(`- Lettura analogica del modello: ${data.timeLine.diagnosi}`, { indent: 2 });
-  addParagraph(
-    `- Indicatori Time Line: PU = ${data.timeLine.pu} | PT = ${data.timeLine.pt} | CDT = ${data.timeLine.cdt}`,
-    { indent: 2 }
-  );
 
   addSubHeading('Giorno, Testimone e Reazione al Torto (Ipotesi Esplorative)');
   addParagraph(`- Giorno / Periodo rilevato: ${data.passo5.giornoEventoDisplay}`, { indent: 2 });
@@ -293,7 +296,7 @@ export function buildResultsPdf(
   addSubHeading('Sigilli Difensivi');
   addParagraph(analysis.sigilloDifesa);
 
-  addSubHeading('Time Line, Giorno & Testimone');
+  addSubHeading('Età, Giorno & Testimone');
   addParagraph(analysis.imprintingTimeline);
 
   addSubHeading('Reazione al Torto & Tendenze');
@@ -312,7 +315,7 @@ export function buildResultsPdf(
     doc.setFontSize(8);
     doc.setTextColor(100, 116, 139);
     doc.text(
-      sanitizePdfText('© 2026 Max Pisani - PACommunication. Tutti i diritti riservati.'),
+      sanitizePdfText('© 2027 Max Pisani - PACommunication. Tutti i diritti riservati.'),
       marginX,
       footerTextY
     );

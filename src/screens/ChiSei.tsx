@@ -1,4 +1,4 @@
-/* © 2026 Max Pisani - PACommunication. Tutti i diritti riservati. */
+/* © 2027 Max Pisani - PACommunication. Tutti i diritti riservati. */
 import React, { useRef } from 'react';
 import { useUser } from '../contexts/UserContext';
 

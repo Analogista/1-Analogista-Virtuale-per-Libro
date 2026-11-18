@@ -1,4 +1,4 @@
-/* © 2026 Max Pisani - PACommunication. Tutti i diritti riservati. */
+/* © 2027 Max Pisani - PACommunication. Tutti i diritti riservati. */
 import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../contexts/UserContext';
@@ -263,7 +263,7 @@ export const TestTAP: React.FC<ScreenProps> = ({ setPage }) => {
       {/* Webcam View con Overlay del Simbolo integrato */}
       <div className="mb-6">
          <div className="relative rounded-2xl overflow-hidden shadow-2xl border-4 border-gray-800 bg-black">
-            <CameraView ref={cameraRef} videoRef={videoRef} showSilhouette={false} showCalibrationButton={false} onReady={handleCameraReady} onServiceId={setCameraServiceId} onCalibrated={handleCalibrated} />
+            <CameraView ref={cameraRef} videoRef={videoRef} showSilhouette={false} showCalibrationButton={false} sensitivity={userData.sensibilita ?? 75} onReady={handleCameraReady} onServiceId={setCameraServiceId} onCalibrated={handleCalibrated} />
 
             {/* Header / Badge del simbolo corrente */}
             <div className="absolute top-4 left-4 right-4 flex justify-between items-center pointer-events-none z-30">

@@ -1,4 +1,4 @@
-/* © 2026 Max Pisani - PACommunication. Tutti i diritti riservati. */
+/* © 2027 Max Pisani - PACommunication. Tutti i diritti riservati. */
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useUser } from '../contexts/UserContext';
 import { useApiKey } from '../contexts/ApiKeyContext';
@@ -17,7 +17,7 @@ const CalibrazioneScreen: React.FC<ScreenProps> = ({ setPage }) => {
   const [message, setMessage] = useState('Premi "Avvia Calibrazione" per iniziare.');
   const [isCameraReady, setIsCameraReady] = useState(false);
   const [hasPlayedIntro, setHasPlayedIntro] = useState(false);
-  const [sensitivity, setSensitivity] = useState(75);
+  const [sensitivity, setSensitivity] = useState<number>(userData.sensibilita ?? 75);
   
   const cameraRef = useRef<any>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -56,6 +56,7 @@ const CalibrazioneScreen: React.FC<ScreenProps> = ({ setPage }) => {
     setMessage("Calibrazione completata con successo! Prova ad oscillare per verificare il feedback corporeo.");
     setUserData(prev => ({
       ...prev,
+      sensibilita: sensitivity,
       completedTests: { ...prev.completedTests, calibrazione: true }
     }));
     voiceService.startManualDetection();
@@ -64,6 +65,10 @@ const CalibrazioneScreen: React.FC<ScreenProps> = ({ setPage }) => {
   const handleSensitivityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = parseInt(e.target.value, 10);
     setSensitivity(val);
+    setUserData(prev => ({
+      ...prev,
+      sensibilita: val,
+    }));
     if (isCameraReady) {
       voiceService.updateSensitivity(val);
     }

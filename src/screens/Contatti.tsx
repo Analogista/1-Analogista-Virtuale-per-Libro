@@ -98,7 +98,7 @@ const Contatti: React.FC<ScreenProps> = ({ setPage }) => {
           <p><strong>Telefono:</strong> +39 331 368 8666</p>
           <p><strong>Orari:</strong> Lunedì-Venerdì, 9:00-18:00</p>
           <p className="mt-3 text-xs text-gray-500 font-semibold border-t border-slate-100 pt-2">
-            © 2026 Max Pisani - PACommunication. Tutti i diritti riservati.
+            © 2027 Max Pisani - PACommunication. Tutti i diritti riservati.
           </p>
         </div>
       </div>

@@ -1,4 +1,4 @@
-/* © 2026 Max Pisani - PACommunication. Tutti i diritti riservati. */
+/* © 2027 Max Pisani - PACommunication. Tutti i diritti riservati. */
 import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../contexts/UserContext';
@@ -226,6 +226,7 @@ const TestSigilliVincoli: React.FC<ScreenProps> = ({ setPage }) => {
           videoRef={videoRef}
           onReady={handleCameraReady}
           onCalibrated={handleCalibrated}
+          sensitivity={userData.sensibilita ?? 75}
           showCalibrationButton={false}
         />
       </div>

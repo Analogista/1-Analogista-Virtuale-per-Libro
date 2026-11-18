@@ -1,4 +1,4 @@
-/* © 2026 Max Pisani - PACommunication. Tutti i diritti riservati. */
+/* © 2027 Max Pisani - PACommunication. Tutti i diritti riservati. */
 import React, { useMemo, useRef, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../contexts/UserContext';
@@ -342,8 +342,8 @@ const IndagineSingola: React.FC<ScreenProps> = ({ setPage }) => {
           <span className="inline-block px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-indigo-100 text-indigo-800 mb-1">
             Indagine Standalone
           </span>
-          <h2 className="text-2xl font-serif font-black text-gray-900">Indietro nel Tempo (Grande Indagine)</h2>
-          <h3 className="text-sm font-medium text-gray-600">Età Evento → Data Esatta → Testimone Chiave → Reazione al Torto</h3>
+          <h2 className="text-2xl font-serif font-black text-gray-900">Indietro nel Tempo</h2>
+          <h3 className="text-sm font-medium text-gray-600">Età Evento → Data Esatta → Testimone &amp; Torto</h3>
         </div>
         <button
           onClick={handleExit}
@@ -369,7 +369,7 @@ const IndagineSingola: React.FC<ScreenProps> = ({ setPage }) => {
       </div>
 
       <div className="my-6">
-        <CameraView ref={cameraRef} videoRef={videoRef} onReady={handleCameraReady} onCalibrated={handleCalibrated} showCalibrationButton={false} />
+        <CameraView ref={cameraRef} videoRef={videoRef} onReady={handleCameraReady} onCalibrated={handleCalibrated} sensitivity={userData.sensibilita ?? 75} showCalibrationButton={false} />
       </div>
 
       <div className="text-center p-4 bg-slate-50 border border-slate-200 rounded-xl min-h-[90px] flex flex-col justify-center">

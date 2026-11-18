@@ -1,4 +1,4 @@
-/* © 2026 Max Pisani - PACommunication. Tutti i diritti riservati. */
+/* © 2027 Max Pisani - PACommunication. Tutti i diritti riservati. */
 import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../contexts/UserContext';
@@ -177,7 +177,7 @@ const TestNome: React.FC<ScreenProps> = ({ setPage }) => {
       
       <InfoBox>
         <p>
-          In questo test autonomo l'inconscio viene interrogato sulla tua identità anagrafica: un'oscillazione in avanti al proprio nome vero e all'indietro a un nome fittizio conferma la piena coerenza analogica del canale inconscio.
+          In questo test autonomo l'inconscio viene interrogato sulla tua identità anagrafica: un'oscillazione in avanti al proprio nome vero e all'indietro a un nome fittizio conferma la piena coerenza analogica del canale inconscio. <strong>Promemoria:</strong> ripetilo sempre all'inizio di ogni nuova sessione o giornata prima degli altri test.
         </p>
       </InfoBox>
 
@@ -187,6 +187,7 @@ const TestNome: React.FC<ScreenProps> = ({ setPage }) => {
           videoRef={videoRef} 
           onReady={handleCameraReady}
           onCalibrated={handleCalibrated}
+          sensitivity={userData.sensibilita ?? 75}
           showCalibrationButton={false}
         />
       </div>
@@ -262,6 +263,10 @@ const TestNome: React.FC<ScreenProps> = ({ setPage }) => {
               </p>
             </div>
           </div>
+
+          <p className="text-xs text-slate-600 mt-3 bg-white/70 border border-slate-200 rounded-lg px-3 py-2">
+            <strong>Promemoria di metodo:</strong> il Test del Nome è autonomo e va ripetuto all'inizio di ogni nuova sessione o giornata di test.
+          </p>
 
           <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
             <button

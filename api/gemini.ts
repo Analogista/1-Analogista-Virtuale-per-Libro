@@ -1,4 +1,14 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+interface VercelRequestLike {
+  method?: string;
+  headers: Record<string, string | string[] | undefined>;
+  socket?: { remoteAddress?: string };
+  body?: unknown;
+}
+
+interface VercelResponseLike {
+  status: (code: number) => VercelResponseLike;
+  json: (body: unknown) => unknown;
+}
 
 // Rate limiting in-memory (si azzera ad ogni cold start, sufficiente per traffico basso)
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
@@ -22,7 +32,7 @@ function isRateLimited(ip: string): boolean {
   return false;
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: VercelRequestLike, res: VercelResponseLike) {
   // Solo POST
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Metodo non consentito' });

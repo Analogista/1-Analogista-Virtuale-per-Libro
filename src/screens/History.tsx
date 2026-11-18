@@ -1,19 +1,19 @@
-import React, { useEffect, useState } from 'react';
+/* © 2027 Max Pisani - PACommunication. Tutti i diritti riservati. */
+import React, { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../services/firebase';
 import { collection, query, where, orderBy, getDocs, Timestamp } from 'firebase/firestore';
-import { handleFirestoreError, OperationType } from '../utils/firestore';
 import { Calendar, User, Clock, ChevronRight, FileText, ShieldAlert, LogIn } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../contexts/UserContext';
 
 interface SavedSession {
   id: string;
-  userId: string;
-  userName: string;
-  createdAt: Timestamp;
-  status: string;
-  data: any;
+  userId?: string;
+  userName?: string;
+  createdAt?: Timestamp | null;
+  status?: string;
+  data?: Record<string, any> | null;
 }
 
 const History: React.FC = () => {
@@ -21,49 +21,70 @@ const History: React.FC = () => {
   const { setUserData } = useUser();
   const [sessions, setSessions] = useState<SavedSession[]>([]);
   const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [reloadTick, setReloadTick] = useState(0);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const fetchSessions = async () => {
-      if (!user) {
-        setLoading(false);
-        return;
-      }
+  const handleRetry = useCallback(() => {
+    setErrorMsg(null);
+    setLoading(true);
+    setReloadTick((prev) => prev + 1);
+  }, []);
 
-      setLoading(true);
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadSessions = async () => {
       try {
-        let q;
-        if (isAdmin) {
-          // Admin sees EVERYTHING
-          q = query(collection(db, 'sessions'), orderBy('createdAt', 'desc'));
-        } else {
-          // Normal user sees only theirs
-          q = query(
-            collection(db, 'sessions'), 
-            where('userId', '==', user.uid),
-            orderBy('createdAt', 'desc')
-          );
-        }
+        const q = isAdmin
+          ? query(collection(db, 'sessions'), orderBy('createdAt', 'desc'))
+          : query(
+              collection(db, 'sessions'),
+              where('userId', '==', user.uid),
+              orderBy('createdAt', 'desc')
+            );
 
         const querySnapshot = await getDocs(q);
+        if (cancelled) return;
+
         const fetchedSessions: SavedSession[] = [];
         querySnapshot.forEach((doc) => {
-          fetchedSessions.push({ id: doc.id, ...(doc.data() as any) } as SavedSession);
+          fetchedSessions.push({ id: doc.id, ...(doc.data() as Record<string, any>) } as SavedSession);
         });
+        setErrorMsg(null);
         setSessions(fetchedSessions);
       } catch (error) {
-        console.error("Error fetching sessions:", error);
-        handleFirestoreError(error, OperationType.LIST, 'sessions');
+        console.error('Error fetching sessions:', error);
+        if (!cancelled) {
+          setErrorMsg('Impossibile caricare lo storico delle sessioni. Riprova tra qualche istante.');
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     };
 
-    fetchSessions();
-  }, [user, isAdmin]);
+    void loadSessions();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user, isAdmin, reloadTick]);
 
   const loadSession = (session: SavedSession) => {
-    setUserData(session.data);
+    if (!session.data || typeof session.data !== 'object') {
+      setErrorMsg('Questa sessione salvata non contiene dati leggibili.');
+      return;
+    }
+    setUserData(prev => ({
+      ...prev,
+      ...session.data,
+    }));
     navigate('/risultati');
   };
 
@@ -131,6 +152,17 @@ const History: React.FC = () => {
         <div className="flex justify-center p-12">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
         </div>
+      ) : errorMsg ? (
+        <div className="bg-red-50 rounded-2xl p-6 sm:p-8 text-center border border-red-200 space-y-3">
+          <p className="text-sm sm:text-base font-semibold text-red-900">{errorMsg}</p>
+          <button
+            type="button"
+            onClick={handleRetry}
+            className="inline-flex items-center justify-center bg-red-600 hover:bg-red-700 text-white font-bold px-5 py-2.5 rounded-xl text-sm transition shadow-sm"
+          >
+            Riprova
+          </button>
+        </div>
       ) : sessions.length === 0 ? (
         <div className="bg-white rounded-2xl p-12 text-center border-2 border-dashed border-gray-200">
           <div className="bg-gray-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -141,44 +173,59 @@ const History: React.FC = () => {
         </div>
       ) : (
         <div className="space-y-4">
-          {sessions.map((session) => (
-            <div 
-              key={session.id}
-              onClick={() => loadSession(session)}
-              className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 hover:shadow-md hover:border-blue-200 transition-all cursor-pointer group"
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="bg-blue-50 text-blue-600 p-3 rounded-lg group-hover:bg-blue-600 group-hover:text-white transition-colors">
-                    <Calendar size={20} />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                       <h4 className="font-bold text-gray-900">
-                         {session.userName || "Paziente Anonimo"}
-                       </h4>
-                       {isAdmin && (
-                         <span className="text-[10px] bg-gray-100 px-1.5 py-0.5 rounded text-gray-500">
-                           UID: {session.userId.substring(0, 5)}...
-                         </span>
-                       )}
+          {sessions.map((session) => {
+            const createdAtLabel =
+              session.createdAt && typeof session.createdAt.toDate === 'function'
+                ? session.createdAt.toDate().toLocaleString('it-IT')
+                : 'Data non disponibile';
+            const uidPrefix =
+              typeof session.userId === 'string' && session.userId.length > 0
+                ? session.userId.substring(0, 5)
+                : 'N/D';
+            const sigilloLabel =
+              session.data && typeof session.data.sigilloFinale === 'string' && session.data.sigilloFinale.trim()
+                ? session.data.sigilloFinale
+                : 'N/D';
+
+            return (
+              <div
+                key={session.id}
+                onClick={() => loadSession(session)}
+                className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 hover:shadow-md hover:border-blue-200 transition-all cursor-pointer group"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="bg-blue-50 text-blue-600 p-3 rounded-lg group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                      <Calendar size={20} />
                     </div>
-                    <div className="flex items-center gap-3 mt-1">
-                      <div className="flex items-center gap-1 text-xs text-gray-500">
-                        <Clock size={12} />
-                        {session.createdAt?.toDate().toLocaleString('it-IT')}
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-bold text-gray-900">
+                          {session.userName || 'Lettore Anonimo'}
+                        </h4>
+                        {isAdmin && (
+                          <span className="text-[10px] bg-gray-100 px-1.5 py-0.5 rounded text-gray-500">
+                            UID: {uidPrefix}...
+                          </span>
+                        )}
                       </div>
-                      <div className="flex items-center gap-1 text-xs text-gray-500">
-                        <User size={12} />
-                        {session.data.sigilloFinale || "N/D"}
+                      <div className="flex items-center gap-3 mt-1">
+                        <div className="flex items-center gap-1 text-xs text-gray-500">
+                          <Clock size={12} />
+                          {createdAtLabel}
+                        </div>
+                        <div className="flex items-center gap-1 text-xs text-gray-500">
+                          <User size={12} />
+                          {sigilloLabel}
+                        </div>
                       </div>
                     </div>
                   </div>
+                  <ChevronRight className="text-gray-300 group-hover:text-blue-500 group-hover:translate-x-1 transition-all" />
                 </div>
-                <ChevronRight className="text-gray-300 group-hover:text-blue-500 group-hover:translate-x-1 transition-all" />
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 

@@ -1,4 +1,4 @@
-/* © 2026 Max Pisani - PACommunication. Tutti i diritti riservati. */
+/* © 2027 Max Pisani - PACommunication. Tutti i diritti riservati. */
 import React from 'react';
 import { useUser } from '../contexts/UserContext';
 
@@ -13,7 +13,7 @@ const ApprofondimentiScreen: React.FC<ScreenProps> = ({ setPage }) => {
     {
       id: 'indagineSingola',
       title: '1. Indietro nel Tempo',
-      description: 'Grande Indagine completa per individuare l\'evento causa.',
+      description: 'Indagine completa nel passato per individuare età, data, testimone e reazione al torto.',
       icon: '⏳'
     },
     {

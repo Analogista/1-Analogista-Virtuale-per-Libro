@@ -1,4 +1,4 @@
-/* © 2026 Max Pisani - PACommunication. Tutti i diritti riservati. */
+/* © 2027 Max Pisani - PACommunication. Tutti i diritti riservati. */
 import React from 'react';
 import InfoBox from '../components/InfoBox';
 import VideoAccordion from '../components/VideoAccordion';
@@ -12,7 +12,7 @@ const RicercaCause: React.FC<ScreenProps> = ({ setPage, completedTests = {} }) =
   const items = [
     {
       id: 'indagineSingola',
-      title: 'Grande Indagine (Indietro nel Tempo)',
+      title: 'Indietro nel Tempo',
       description: 'Ciclo completo: Età, Giorno esatto, Testimone e Torto.',
       icon: '⏳',
       details: 'Il percorso investigativo completo per trovare l\'origine del blocco emotivo.'
@@ -26,7 +26,7 @@ const RicercaCause: React.FC<ScreenProps> = ({ setPage, completedTests = {} }) =
     },
     {
       id: 'testimone',
-      title: 'Testimone Chiave & Torto',
+      title: 'Testimone & Torto',
       description: 'Ricerca della figura di riferimento collegata all\'evento causa.',
       icon: '👤',
       details: 'Indaga su chi era presente e quale reazione emotiva hai avuto (Giustificato/Non Giustificato).'

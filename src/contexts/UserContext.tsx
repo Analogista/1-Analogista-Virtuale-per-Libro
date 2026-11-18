@@ -1,4 +1,4 @@
-/* © 2026 Max Pisani - PACommunication. Tutti i diritti riservati. */
+/* © 2027 Max Pisani - PACommunication. Tutti i diritti riservati. */
 import React, { createContext, useState, useContext, ReactNode, useEffect, useMemo } from 'react';
 import { UserData, UserContextType } from '../types';
 
@@ -7,6 +7,7 @@ const initialUserData: UserData = {
   eta: '',
   genere: '',
   problema: '',
+  sensibilita: 75,
   testInduttore: { manoDestra: '', manoSinistra: '' },
   induttoreResult: '',
   testNome: { nomeVero: '', nomeFalso: '' },
@@ -50,9 +51,14 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const savedData = localStorage.getItem('userData');
       if (savedData) {
         const parsedData = JSON.parse(savedData);
+        const parsedSens =
+          typeof parsedData.sensibilita === 'number' && Number.isFinite(parsedData.sensibilita)
+            ? Math.max(0, Math.min(100, parsedData.sensibilita))
+            : initialUserData.sensibilita;
         return {
           ...initialUserData,
           ...parsedData,
+          sensibilita: parsedSens,
           puntiDistonici: {
             ...initialUserData.puntiDistonici,
             ...(parsedData.puntiDistonici || {}),

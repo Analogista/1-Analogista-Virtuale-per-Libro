@@ -7,6 +7,7 @@ export interface UserData {
   eta: string;
   genere: 'MASCHIO' | 'FEMMINA' | '';
   problema: string;
+  sensibilita?: number;
   testTAP?: {
     results: Record<'asta' | 'cerchio' | 'triangolo', 'SI' | 'NO' | 'NEUTRO' | 'NON_RILEVATO' | ''>;
     diagnosis: {
@@ -32,17 +33,17 @@ export interface UserData {
     manoDestra: 'Avanti' | 'Indietro' | '';
     manoSinistra: 'Avanti' | 'Indietro' | '';
   };
-  induttoreResult: 'Destro' | 'Sinistro' | '';
+  induttoreResult: 'Destro' | 'Sinistro' | 'Non chiaro' | '';
   testNome: {
     nomeVero: 'SI' | 'NO' | 'NON_RILEVATO' | '';
     nomeFalso: 'SI' | 'NO' | 'NON_RILEVATO' | '';
   };
   puntiDistonici: {
-    famiglia: 'SI' | 'NO' | 'NON_RILEVATO' | '';
-    famigliaAcquisita: 'SI' | 'NO' | 'NON_RILEVATO' | '';
-    sentimentali: 'SI' | 'NO' | 'NON_RILEVATO' | '';
-    sessuali: 'SI' | 'NO' | 'NON_RILEVATO' | '';
-    autorealizzazione: 'SI' | 'NO' | 'NON_RILEVATO' | '';
+    famiglia: 'SI' | 'NO' | 'NON_RILEVATO' | 'NON_APPLICABILE' | '';
+    famigliaAcquisita: 'SI' | 'NO' | 'NON_RILEVATO' | 'NON_APPLICABILE' | '';
+    sentimentali: 'SI' | 'NO' | 'NON_RILEVATO' | 'NON_APPLICABILE' | '';
+    sessuali: 'SI' | 'NO' | 'NON_RILEVATO' | 'NON_APPLICABILE' | '';
+    autorealizzazione: 'SI' | 'NO' | 'NON_RILEVATO' | 'NON_APPLICABILE' | '';
   };
   puntoDistonicoFinale: string;
   sigilli: {

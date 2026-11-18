@@ -1,4 +1,4 @@
-/* © 2026 Max Pisani - PACommunication. Tutti i diritti riservati. */
+/* © 2027 Max Pisani - PACommunication. Tutti i diritti riservati. */
 import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../contexts/UserContext';
@@ -213,7 +213,7 @@ const TestimoneChiave: React.FC<ScreenProps> = ({ setPage }) => {
         <div className="my-5 p-4 sm:p-5 rounded-2xl bg-teal-50 border-2 border-teal-200 shadow-sm space-y-3">
           <div>
             <span className="inline-block text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-white text-teal-800 border border-teal-200">
-              {userData.completedTests?.testimoneFromGrandeIndagine ? 'Dato da Grande Indagine' : 'Dato già presente'}
+              {userData.completedTests?.testimoneFromGrandeIndagine ? 'Dato da Indietro nel Tempo' : 'Dato già presente'}
             </span>
             <h4 className="font-serif font-bold text-lg text-teal-950 mt-1">
               Testimone già registrato: {userData.testimoneChiave === 'non identificato' ? 'Testimone non identificato' : userData.testimoneChiave}
@@ -245,7 +245,7 @@ const TestimoneChiave: React.FC<ScreenProps> = ({ setPage }) => {
       )}
 
       <div className="my-6">
-        <CameraView ref={cameraRef} videoRef={videoRef} onReady={handleCameraReady} onCalibrated={handleCalibrated} showCalibrationButton={false} />
+        <CameraView ref={cameraRef} videoRef={videoRef} onReady={handleCameraReady} onCalibrated={handleCalibrated} sensitivity={userData.sensibilita ?? 75} showCalibrationButton={false} />
       </div>
 
       <div className="my-6 flex justify-center">

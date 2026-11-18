@@ -1,4 +1,4 @@
-/* © 2026 Max Pisani - PACommunication. Tutti i diritti riservati. */
+/* © 2027 Max Pisani - PACommunication. Tutti i diritti riservati. */
 import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../contexts/UserContext';
@@ -28,12 +28,14 @@ const daysInMonth: { [key: string]: number } = {
 const QualeGiorno: React.FC<ScreenProps> = ({ setPage }) => {
   const navigate = useNavigate();
   const { userData, setUserData } = useUser();
-  const [status, setStatus] = useState<'IDLE' | 'TESTING' | 'SUCCESS' | 'ERROR'>('IDLE');
-  const [message, setMessage] = useState('Pronto a trovare la data e il giorno esatto dell\'evento?');
+  const [status, setStatus] = useState<'IDLE' | 'CALIBRATING' | 'TESTING' | 'SUCCESS' | 'ERROR'>('IDLE');
+  const [message, setMessage] = useState('Premi "Inizia Calibrazione e Ricerca Data" per avviare il test.');
   const [isCameraReady, setIsCameraReady] = useState(false);
+  const [isCalibrated, setIsCalibrated] = useState(false);
   const [reusePromptDismissed, setReusePromptDismissed] = useState(false);
   const [foundDate, setFoundDate] = useState<string>(userData.giornoEvento || '');
         
+  const cameraRef = useRef<any>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const voiceService = useMemo(() => new AdvancedVoiceService(), []);
   const guardRef = useRef<SessionGuard | null>(null);
@@ -54,10 +56,27 @@ const QualeGiorno: React.FC<ScreenProps> = ({ setPage }) => {
     }
   };
 
+  const startCalibration = async () => {
+    setStatus('CALIBRATING');
+    setMessage('Rimani immobile per la calibrazione...');
+    try {
+      await voiceService.speak("Stessa posizione: in piedi, braccia lungo il corpo. Dopo il conto alla rovescia inizieremo la ricerca del giorno.");
+    } catch { /* ignore */ }
+    if (cameraRef.current) {
+      cameraRef.current.startCalibration();
+    }
+  };
+
+  const handleCalibrated = () => {
+    setIsCalibrated(true);
+    startTest();
+  };
+
   const handleRepeat = () => {
     guardRef.current?.cancel();
     voiceService.cancel();
     setStatus('IDLE');
+    setIsCalibrated(false);
     setReusePromptDismissed(true);
     setFoundDate('');
     setMessage('Pronto a trovare il giorno esatto?');
@@ -219,7 +238,7 @@ const QualeGiorno: React.FC<ScreenProps> = ({ setPage }) => {
         <div className="my-5 p-4 sm:p-5 rounded-2xl bg-amber-50 border-2 border-amber-200 shadow-sm space-y-3">
           <div>
             <span className="inline-block text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-white text-amber-800 border border-amber-200">
-              {userData.completedTests?.qualeGiornoFromGrandeIndagine ? 'Dato da Grande Indagine' : 'Dato già presente'}
+              {userData.completedTests?.qualeGiornoFromGrandeIndagine ? 'Dato da Indietro nel Tempo' : 'Dato già presente'}
             </span>
             <h4 className="font-serif font-bold text-lg text-amber-950 mt-1">
               Data già registrata: {userData.giornoEvento}
@@ -245,11 +264,24 @@ const QualeGiorno: React.FC<ScreenProps> = ({ setPage }) => {
       )}
       
       <div className="my-6">
-        <CameraView videoRef={videoRef} onReady={handleCameraReady} showCalibrationButton={false} />
+        <CameraView
+          ref={cameraRef}
+          videoRef={videoRef}
+          onReady={handleCameraReady}
+          onCalibrated={handleCalibrated}
+          sensitivity={userData.sensibilita ?? 75}
+          showCalibrationButton={false}
+        />
       </div>
 
       <div className="text-center p-4 bg-slate-50 border border-slate-200 rounded-xl min-h-[80px] flex flex-col items-center justify-center">
         <p className={`font-semibold text-base ${status === 'SUCCESS' ? 'text-emerald-700' : 'text-blue-900'}`}>{message}</p>
+        {status === 'CALIBRATING' && (
+          <div className="flex items-center space-x-2 mt-2">
+            <span className="w-2.5 h-2.5 bg-amber-600 rounded-full animate-ping"></span>
+            <span className="text-amber-800 text-xs font-bold uppercase tracking-widest">Calibrazione in corso...</span>
+          </div>
+        )}
         {status === 'TESTING' && (
           <div className="flex items-center space-x-2 mt-2">
             <svg className="animate-spin h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
@@ -287,14 +319,18 @@ const QualeGiorno: React.FC<ScreenProps> = ({ setPage }) => {
         </div>
       )}
 
-      {status !== 'SUCCESS' && (!hasExistingDate || reusePromptDismissed) && (
+      {status !== 'SUCCESS' && !isCalibrated && (!hasExistingDate || reusePromptDismissed) && (
         <div className="mt-8 text-center">
           <button 
-            onClick={startTest} 
-            disabled={!isCameraReady || status === 'TESTING'}
+            onClick={startCalibration} 
+            disabled={!isCameraReady || status === 'CALIBRATING' || status === 'TESTING'}
             className="w-full sm:w-auto bg-amber-600 hover:bg-amber-700 text-white font-bold py-3.5 px-8 rounded-xl shadow-lg transition duration-300 disabled:bg-gray-400 uppercase tracking-widest text-sm"
           >
-            {status === 'TESTING' ? 'Ricerca in corso...' : 'Avvia Ricerca Data'}
+            {status === 'CALIBRATING'
+              ? 'Calibrazione in corso...'
+              : status === 'TESTING'
+                ? 'Ricerca in corso...'
+                : 'Inizia Calibrazione e Ricerca Data'}
           </button>
         </div>
       )}

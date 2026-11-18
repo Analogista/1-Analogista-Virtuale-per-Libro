@@ -1,8 +1,7 @@
-/* © 2026 Max Pisani - PACommunication. Tutti i diritti riservati. */
+/* © 2027 Max Pisani - PACommunication. Tutti i diritti riservati. */
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useUser } from '../contexts/UserContext';
 import { useAuth } from '../contexts/AuthContext';
-import TimeLineGraph from '../components/TimeLineGraph';
 import { useNavigate } from 'react-router-dom';
 import {
   generateAnalogicalAnalysis,
@@ -11,7 +10,6 @@ import {
 import { buildResultsPdf, getPdfFilename } from '../utils/reportPdf';
 import { db } from '../services/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { handleFirestoreError, OperationType } from '../utils/firestore';
 import { Save, Check, Loader2 } from 'lucide-react';
 
 interface ScreenProps {
@@ -114,6 +112,7 @@ const Risultati: React.FC<ScreenProps> = ({ setPage }) => {
   const [isReading, setIsReading] = useState(false);
   const [ttsStatus, setTtsStatus] = useState<{ type: 'success' | 'error' | 'info'; msg: string } | null>(null);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [saveErrorMsg, setSaveErrorMsg] = useState<string | null>(null);
   const speechSessionRef = useRef(0);
 
   const isSpeechSupported =
@@ -142,6 +141,7 @@ const Risultati: React.FC<ScreenProps> = ({ setPage }) => {
     if (!user) return;
 
     setSaveStatus('saving');
+    setSaveErrorMsg(null);
     try {
       const sessionData = {
         userId: user.uid,
@@ -159,7 +159,7 @@ const Risultati: React.FC<ScreenProps> = ({ setPage }) => {
     } catch (error) {
       console.error('Error saving session:', error);
       setSaveStatus('error');
-      handleFirestoreError(error, OperationType.CREATE, 'sessions');
+      setSaveErrorMsg('Impossibile salvare la sessione al momento. Verifica la connessione e riprova.');
     }
   };
 
@@ -171,12 +171,18 @@ const Risultati: React.FC<ScreenProps> = ({ setPage }) => {
     { key: 'autorealizzazione', subject: 'Lavoro', raw: userData.puntiDistonici?.autorealizzazione },
   ] as const;
 
+  const applicableRadarItems = radarItems.filter(
+    (item) => item.raw !== 'NON_APPLICABILE'
+  );
   const validRadarItems = radarItems.filter(
     (item): item is (typeof radarItems)[number] & { raw: 'SI' | 'NO' } =>
       item.raw === 'SI' || item.raw === 'NO'
   );
+  const nonApplicableRadarItems = radarItems.filter(
+    (item) => item.raw === 'NON_APPLICABILE'
+  );
   const missingRadarItems = radarItems.filter(
-    (item) => item.raw !== 'SI' && item.raw !== 'NO'
+    (item) => item.raw !== 'SI' && item.raw !== 'NO' && item.raw !== 'NON_APPLICABILE'
   );
 
   const hasValidPuntiDistoniciData = validRadarItems.length > 0;
@@ -307,11 +313,6 @@ const Risultati: React.FC<ScreenProps> = ({ setPage }) => {
     doc.save(getPdfFilename(userData));
   };
 
-  const parsedCurrentAge = parseInt(userData.eta || '', 10);
-  const parsedEventAge = parseInt(userData.timeLine?.etaEventoCausa || '', 10);
-  const canRenderTimelineGraph =
-    Boolean(userData.timeLine?.PU) && Number.isFinite(parsedCurrentAge) && parsedCurrentAge > 0;
-
   const renderSummary = () => {
     if (!crossAnalysis.hasAnyTestData) {
       return (
@@ -370,7 +371,7 @@ const Risultati: React.FC<ScreenProps> = ({ setPage }) => {
 
           <div className="p-3 bg-white rounded-xl border border-indigo-100 shadow-sm min-w-0">
             <p className="font-bold text-xs uppercase tracking-wide text-indigo-700 mb-1 flex items-center gap-1">
-              <span>⏳</span> Time Line, Giorno &amp; Testimone
+              <span>⏳</span> Età, Giorno &amp; Testimone
             </p>
             <p className="text-xs text-slate-700 leading-relaxed">{crossAnalysis.imprintingTimeline}</p>
           </div>
@@ -541,7 +542,9 @@ const Risultati: React.FC<ScreenProps> = ({ setPage }) => {
             <div className="mt-4 p-3 rounded-lg bg-slate-50 border border-slate-200 space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-1 text-xs">
                 <span className="font-bold text-slate-800">
-                  {validRadarItems.length} su {radarItems.length} risposte disponibili
+                  {nonApplicableRadarItems.length > 0
+                    ? `${validRadarItems.length} su ${applicableRadarItems.length} aree applicabili disponibili`
+                    : `${validRadarItems.length} su ${radarItems.length} risposte disponibili`}
                 </span>
               </div>
               <ul className="space-y-1.5 text-xs">
@@ -557,25 +560,45 @@ const Risultati: React.FC<ScreenProps> = ({ setPage }) => {
                   </li>
                 ))}
               </ul>
-              <div className="pt-2 border-t border-slate-200 space-y-1.5">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                  Aree senza dati
-                </p>
-                <ul className="space-y-1 text-xs">
-                  {missingRadarItems.map((item) => (
-                    <li
-                      key={item.key}
-                      className="flex flex-wrap items-center justify-between gap-2 px-2.5 py-1 rounded bg-white/60 border border-slate-200/80"
-                    >
-                      <span className="text-slate-700">{item.subject}</span>
-                      <span className="text-slate-500 italic">Non rilevato</span>
-                    </li>
-                  ))}
-                </ul>
-                <p className="text-[11px] text-slate-600 pt-1 leading-relaxed">
-                  Il grafico completo sarà disponibile quando tutte e 5 le aree avranno risposta Sì o No.
-                </p>
-              </div>
+              {missingRadarItems.length > 0 && (
+                <div className="pt-2 border-t border-slate-200 space-y-1.5">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                    Aree senza dati
+                  </p>
+                  <ul className="space-y-1 text-xs">
+                    {missingRadarItems.map((item) => (
+                      <li
+                        key={item.key}
+                        className="flex flex-wrap items-center justify-between gap-2 px-2.5 py-1 rounded bg-white/60 border border-slate-200/80"
+                      >
+                        <span className="text-slate-700">{item.subject}</span>
+                        <span className="text-slate-500 italic">Non rilevato</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {nonApplicableRadarItems.length > 0 && (
+                <div className="pt-2 border-t border-slate-200 space-y-1.5">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                    Aree escluse come non applicabili
+                  </p>
+                  <ul className="space-y-1 text-xs">
+                    {nonApplicableRadarItems.map((item) => (
+                      <li
+                        key={item.key}
+                        className="flex flex-wrap items-center justify-between gap-2 px-2.5 py-1 rounded bg-white/60 border border-slate-200/80"
+                      >
+                        <span className="text-slate-700">{item.subject}</span>
+                        <span className="text-slate-500 italic">Non applicabile</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              <p className="text-[11px] text-slate-600 pt-1 leading-relaxed">
+                Il grafico completo sarà disponibile quando tutte e 5 le aree avranno risposta Sì o No.
+              </p>
             </div>
           ) : (
             <p className="mt-4 p-3 rounded-lg bg-slate-50 border border-slate-200 text-xs sm:text-sm text-slate-600 text-center italic">
@@ -625,32 +648,13 @@ const Risultati: React.FC<ScreenProps> = ({ setPage }) => {
         </ResultCard>
 
         <div className="md:col-span-2 min-w-0">
-          <ResultCard title="⏳ Time Line (Ipotesi Esplorativa)">
+          <ResultCard title="⏳ Età ipotizzata nel tempo (Ipotesi Esplorativa)">
             <p>
               <strong>Età ipotizzata evento:</strong> {reportData.timeLine.etaEventoCausa}
             </p>
-            <p>
-              <strong>Lettura analogica del modello:</strong> {reportData.timeLine.diagnosi}
+            <p className="text-xs text-gray-500 italic">
+              Elemento esplorativo emerso dal percorso «Indietro nel Tempo» (non costituisce fatto storico né ricordo accertato).
             </p>
-            <p className="text-xs text-gray-600">
-              <strong>Indicatori:</strong> PU: {reportData.timeLine.pu} · PT: {reportData.timeLine.pt} ·
-              CDT: {reportData.timeLine.cdt}
-            </p>
-            {canRenderTimelineGraph && userData.timeLine?.PU ? (
-              <TimeLineGraph
-                age={parsedCurrentAge}
-                PU={userData.timeLine.PU}
-                PT={userData.timeLine.PT}
-                eventAge={Number.isFinite(parsedEventAge) ? parsedEventAge : 0}
-                diagnosis={userData.timeLine.diagnosi}
-              />
-            ) : (
-              <p className="text-xs text-gray-500 italic mt-2">
-                {userData.timeLine?.PU
-                  ? 'Grafico non visualizzabile perché manca un’età anagrafica valida in «I Tuoi Dati».'
-                  : 'Mappa grafica disponibile dopo il completamento della Time Line.'}
-              </p>
-            )}
           </ResultCard>
         </div>
 
@@ -708,12 +712,12 @@ const Risultati: React.FC<ScreenProps> = ({ setPage }) => {
         {user && (
           <button
             onClick={handleSaveSession}
-            disabled={saveStatus !== 'idle'}
+            disabled={saveStatus === 'saving' || saveStatus === 'saved'}
             className={`w-full sm:w-auto justify-center flex items-center gap-2 font-bold py-3 px-6 rounded-xl transition duration-300 shadow-md text-sm ${
               saveStatus === 'saved'
                 ? 'bg-green-100 text-green-700'
                 : saveStatus === 'error'
-                ? 'bg-red-100 text-red-700'
+                ? 'bg-red-100 text-red-700 hover:bg-red-200'
                 : 'bg-blue-600 text-white hover:bg-blue-700'
             }`}
           >
@@ -729,7 +733,7 @@ const Risultati: React.FC<ScreenProps> = ({ setPage }) => {
               : saveStatus === 'saved'
               ? 'Sessione Salvata!'
               : saveStatus === 'error'
-              ? 'Errore Salvataggio'
+              ? 'Riprova Salvataggio'
               : 'Salva Sessione'}
           </button>
         )}
@@ -746,6 +750,11 @@ const Risultati: React.FC<ScreenProps> = ({ setPage }) => {
           Contatta Max Pisani &rarr;
         </button>
       </div>
+      {saveErrorMsg && (
+        <p className="mt-3 text-center text-xs font-semibold text-red-700 no-print">
+          {saveErrorMsg}
+        </p>
+      )}
     </div>
   );
 };

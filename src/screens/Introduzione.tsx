@@ -33,11 +33,11 @@ const Introduzione: React.FC<ScreenProps> = ({ setPage }) => {
         </div>
         <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
             <h4 className="font-bold text-gray-800">Fase 2: Approfondimenti</h4>
-            <p className="text-sm mt-1">Puoi eseguire liberamente i test di approfondimento sull'evento causa e sulla reazione al torto: <strong>Indietro nel Tempo (Grande Indagine)</strong>, <strong>Test Quale Giorno</strong> e <strong>Testimone &amp; Torto</strong>.</p>
+            <p className="text-sm mt-1">Puoi eseguire liberamente i test di approfondimento sull'evento causa e sulla reazione al torto: <strong>Indietro nel Tempo</strong>, <strong>Test Quale Giorno</strong> e <strong>Testimone &amp; Torto</strong>.</p>
         </div>
         <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
             <h4 className="font-bold text-gray-800">Fase 3: Check-in e nuovo ciclo (anteprima non attiva)</h4>
-            <p className="text-sm mt-1">Sezione prevista per i check-in periodici dal giorno 15 e dopo il giorno 21 del percorso (attualmente in anteprima non operativa).</p>
+            <p className="text-sm mt-1">Sezione prevista per future verifiche periodiche nel tempo lungo il percorso con il libro (attualmente in anteprima non operativa).</p>
         </div>
       </div>
       

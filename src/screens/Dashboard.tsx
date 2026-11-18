@@ -1,4 +1,4 @@
-/* © 2026 Max Pisani - PACommunication. Tutti i diritti riservati. */
+/* © 2027 Max Pisani - PACommunication. Tutti i diritti riservati. */
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../contexts/UserContext';
@@ -55,7 +55,7 @@ const tests: TestItem[] = [
   { id: 'sigilli', title: 'Test Sigilli e Vincoli', description: 'Sensi di colpa, paura dell\'abbandono, timore del giudizio, mancanza di autostima', component: TestSigilliVincoli, icon: '🔐' },
 
   // Linea del Tempo & Indagini nel Tempo
-  { id: 'indagineSingola', title: 'Indietro nel Tempo (Grande Indagine)', description: 'Ciclo completo: Età, Giorno esatto, Testimone e Torto', component: IndagineSingola, icon: '⏳' },
+  { id: 'indagineSingola', title: 'Indietro nel Tempo', description: 'Ciclo completo: Età, Giorno esatto, Testimone e Torto', component: IndagineSingola, icon: '⏳' },
   { id: 'qualeGiorno', title: 'Test Quale Giorno', description: 'Ricerca autonoma della stagione, mese e giorno dell\'evento', component: QualeGiorno, icon: '📅' },
   { id: 'testimone', title: 'Testimone & Torto', description: 'Ricerca del ruolo di riferimento e delle due domande sulla reazione al torto', component: TestimoneChiave, icon: '👤' },
 ];
@@ -498,7 +498,7 @@ const Dashboard: React.FC = () => {
                           </h5>
                           {isFromGrandeIndagine ? (
                             <span className="text-[11px] font-bold text-blue-700 bg-blue-100 border border-blue-200 px-2 py-0.5 rounded-md whitespace-nowrap">
-                              ✓ da Grande Indagine
+                              ✓ da Indietro nel Tempo
                             </span>
                           ) : isDone ? (
                             <span className="text-blue-600 text-lg font-bold flex-shrink-0">✓</span>

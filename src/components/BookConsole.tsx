@@ -1,19 +1,21 @@
-/* © 2026 Max Pisani - PACommunication. Tutti i diritti riservati. */
+/* © 2027 Max Pisani - PACommunication. Tutti i diritti riservati. */
 import React, { useState } from 'react';
+import type { UserData } from '../types';
 
 interface BookConsoleProps {
   onSelectTest: (testId: string) => void;
-  completedTests?: Record<string, boolean>;
+  completedTests?: UserData['completedTests'];
 }
 
-export const BookConsole: React.FC<BookConsoleProps> = ({ onSelectTest, completedTests = {} }) => {
+export const BookConsole: React.FC<BookConsoleProps> = ({ onSelectTest, completedTests }) => {
+  const done: Record<string, boolean | undefined> = completedTests ?? {};
   // Verifica se i 5 test della fotografia iniziale sono tutti completati
   const isPhase1Complete = Boolean(
-    completedTests.tap &&
-    completedTests.induttore &&
-    completedTests.nome &&
-    completedTests.puntiDistonici &&
-    completedTests.sigilli
+    done.tap &&
+    done.induttore &&
+    done.nome &&
+    done.puntiDistonici &&
+    done.sigilli
   );
 
   // Regola richiesta: se la fotografia iniziale non esiste ancora, mostra aperta la Fase 1 e chiuse le Fasi 2 e 3;
@@ -118,11 +120,11 @@ export const BookConsole: React.FC<BookConsoleProps> = ({ onSelectTest, complete
                 {[
                   { id: 'tap', title: '1. Test T.A.P.', label: 'Asta, Cerchio, Triangolo' },
                   { id: 'induttore', title: '2. Test Induttore', label: 'Libertà vs Sogno' },
-                  { id: 'nome', title: '3. Test del Nome', label: 'Riconoscimento identità' },
+                  { id: 'nome', title: '3. Test del Nome', label: 'Verifica Sì/No (ripeti ad ogni sessione)' },
                   { id: 'puntiDistonici', title: '4. Test Punti Distonici', label: 'Aree di vita' },
                   { id: 'sigilli', title: '5. Test Sigilli e Vincoli', label: 'Blocchi emotivi specifici' },
                 ].map((t) => {
-                  const isDone = !!completedTests[t.id];
+                  const isDone = !!done[t.id];
                   return (
                     <button
                       key={t.id}
@@ -151,6 +153,9 @@ export const BookConsole: React.FC<BookConsoleProps> = ({ onSelectTest, complete
                   );
                 })}
               </div>
+              <p className="mt-3 text-xs text-slate-600 bg-white/90 border border-blue-100 rounded-lg px-3 py-2 leading-relaxed">
+                <strong>Promemoria:</strong> il <strong>Test del Nome</strong> è autonomo e va ripetuto all’inizio di ogni nuova sessione o giornata di test per confermare la risposta istintiva Sì/No.
+              </p>
             </div>
           )}
         </div>
@@ -215,7 +220,7 @@ export const BookConsole: React.FC<BookConsoleProps> = ({ onSelectTest, complete
                   <span className="text-2xl flex-shrink-0">🧭</span>
                   <div className="text-left min-w-0">
                     <h4 className="font-bold text-sm sm:text-base">Vai alla Ricerca Cause</h4>
-                    <p className="text-xs text-indigo-100">Grande Indagine, Quale Giorno, Testimone &amp; Torto</p>
+                    <p className="text-xs text-indigo-100">Indietro nel Tempo, Quale Giorno, Testimone &amp; Torto</p>
                   </div>
                 </div>
                 <span className="text-xl flex-shrink-0 group-hover:translate-x-1 transition-transform">→</span>
@@ -249,7 +254,7 @@ export const BookConsole: React.FC<BookConsoleProps> = ({ onSelectTest, complete
                   </span>
                 </div>
                 <p className="text-xs sm:text-sm font-medium text-slate-600 mt-0.5">
-                  Funzione prevista per i controlli dal giorno 15 e dopo il giorno 21
+                  Tornare sui tuoi punti nel tempo — verifica periodica (in preparazione)
                 </p>
               </div>
             </div>

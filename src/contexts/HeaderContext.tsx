@@ -13,7 +13,7 @@ const HeaderContext = createContext<HeaderContextType | undefined>(undefined);
 
 export const HeaderProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [title, setTitle] = useState('Analogista Virtuale di Max Pisani');
-  const [subtitle, setSubtitle] = useState<string | null>('© 2026 Max Pisani - PACommunication. Tutti i diritti riservati.');
+  const [subtitle, setSubtitle] = useState<string | null>('© 2027 Max Pisani - PACommunication. Tutti i diritti riservati.');
   const [isProMode, setIsProMode] = useState(false);
 
   const setHeader = (newTitle: string, newSubtitle: string | null = null) => {

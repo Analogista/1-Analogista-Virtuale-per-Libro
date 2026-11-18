@@ -1,4 +1,4 @@
-/* © 2026 Max Pisani - PACommunication. Tutti i diritti riservati. */
+/* © 2027 Max Pisani - PACommunication. Tutti i diritti riservati. */
 import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../contexts/UserContext';
@@ -121,25 +121,16 @@ const TestInduttore: React.FC<ScreenProps> = ({ setPage }) => {
         return;
       }
 
-      let induttoreFinalResult: 'Destro' | 'Sinistro' | '' = '';
+      let induttoreFinalResult: 'Destro' | 'Sinistro' | 'Non chiaro' = 'Non chiaro';
       if (destraResultText === 'Avanti' && sinistraResultText === 'Indietro') {
         induttoreFinalResult = 'Destro';
-        setMessage('Induttore Destro rilevato! Indica la "Sindrome di Giulietta e Romeo": orientamento su problemi di libertà e conflitto istituzionale/genitoriale.');
+        setMessage('Induttore Destro rilevato! Fase Istituzionale (Grillo Parlante): orientamento sul tema della libertà.');
       } else if (destraResultText === 'Indietro' && sinistraResultText === 'Avanti') {
         induttoreFinalResult = 'Sinistro';
-        setMessage('Induttore Sinistro rilevato! Corrisponde alla "Sindrome di Dante e Beatrice": orientamento su problemi di sogno, conquista e sfera affettiva/trasgressiva.');
+        setMessage('Induttore Sinistro rilevato! Fase Trasgressiva (Lucignolo): orientamento sul tema del sogno.');
       } else {
-        setMessage('Combinazione ambivalente. Ti consigliamo di ripetere il test per ottenere una polarità netta.');
-        setStatus('DONE');
-        setUserData(prev => ({
-          ...prev,
-          testInduttore: {
-            manoDestra: destraResultText as 'Avanti' | 'Indietro',
-            manoSinistra: sinistraResultText as 'Avanti' | 'Indietro'
-          },
-          induttoreResult: ''
-        }));
-        return;
+        induttoreFinalResult = 'Non chiaro';
+        setMessage('Oscillazione ambivalente registrata come «Non chiaro». Fai una breve pausa e ripeti una volta se desideri chiarire, senza forzare alcuna polarità.');
       }
       
       setUserData(prev => ({
@@ -152,7 +143,11 @@ const TestInduttore: React.FC<ScreenProps> = ({ setPage }) => {
         completedTests: { ...prev.completedTests, induttore: true }
       }));
       setStatus('SUCCESS');
-      await voiceService.speak(`Test induttore completato con successo. Induttore ${induttoreFinalResult} rilevato.`);
+      if (induttoreFinalResult === 'Non chiaro') {
+        await voiceService.speak('Le due mani hanno mostrato la stessa direzione: esito registrato come Non chiaro. Puoi fare una breve pausa e ripetere una volta oppure proseguire.');
+      } else {
+        await voiceService.speak(`Test induttore completato con successo. Induttore ${induttoreFinalResult} rilevato.`);
+      }
     } catch (error) {
       console.error("Test error:", error);
       setMessage("Test interrotto.");
@@ -183,7 +178,7 @@ const TestInduttore: React.FC<ScreenProps> = ({ setPage }) => {
 
       <div className="my-6">
          <div className={`relative rounded-2xl overflow-hidden shadow-2xl border-4 ${isProMode ? 'border-gray-800' : 'border-gray-200'} bg-black`}>
-            <CameraView ref={cameraRef} videoRef={videoRef} onReady={handleCameraReady} onCalibrated={handleCalibrated} showCalibrationButton={false} />
+            <CameraView ref={cameraRef} videoRef={videoRef} onReady={handleCameraReady} onCalibrated={handleCalibrated} sensitivity={userData.sensibilita ?? 75} showCalibrationButton={false} />
          </div>
       </div>
 
@@ -226,11 +221,17 @@ const TestInduttore: React.FC<ScreenProps> = ({ setPage }) => {
       {status === 'SUCCESS' && userData.induttoreResult && (
         <div className="mt-6 p-6 rounded-2xl bg-indigo-950/50 border-2 border-indigo-500/40 text-center animate-fadeIn">
           <h4 className="text-xs uppercase tracking-widest text-indigo-300 font-bold mb-1">Esito Induttore Rilevato</h4>
-          <p className="text-2xl font-serif font-black text-white mb-2">Induttore {userData.induttoreResult}</p>
+          <p className="text-2xl font-serif font-black text-white mb-2">
+            {userData.induttoreResult === 'Non chiaro'
+              ? 'Esito: Non chiaro'
+              : `Induttore ${userData.induttoreResult}`}
+          </p>
           <p className="text-sm text-indigo-200 max-w-xl mx-auto">
             {userData.induttoreResult === 'Destro'
-              ? 'Indica un conflitto orientato sulla Libertà (Sindrome di Giulietta e Romeo). La sfera paterna/istituzionale influenza le tue scelte e decisioni.'
-              : 'Indica un conflitto orientato sul Sogno (Sindrome di Dante e Beatrice). La sfera materna/affettiva e la conquista emozionale guidano la tua motivazione profonda.'}
+              ? 'Fase Istituzionale (Grillo Parlante) — tema della libertà. Segnala una dinamica legata a regole, coerenza e confronto con i vincoli.'
+              : userData.induttoreResult === 'Sinistro'
+              ? 'Fase Trasgressiva (Lucignolo) — tema del sogno. Segnala una dinamica legata a desiderio, slancio emotivo e sfera affettiva.'
+              : 'Le due mani hanno prodotto una risposta ambivalente (entrambe avanti o entrambe indietro). Puoi fare una breve pausa e ripetere una volta per verificare, oppure proseguire mantenendo registrato «Non chiaro».'}
           </p>
 
           <div className="mt-6 flex flex-col sm:flex-row gap-4 justify-center">
@@ -244,14 +245,6 @@ const TestInduttore: React.FC<ScreenProps> = ({ setPage }) => {
               VEDI RISULTATI
             </button>
           </div>
-        </div>
-      )}
-
-      {status === 'DONE' && (
-        <div className="mt-6 flex justify-center">
-          <button onClick={handleRepeat} className="bg-gray-800 text-cyan-400 font-bold py-3 px-6 rounded-xl border border-cyan-800">
-            Riprova per un Risultato Netto
-          </button>
         </div>
       )}
 

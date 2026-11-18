@@ -1,4 +1,4 @@
-/* © 2026 Max Pisani - PACommunication. Tutti i diritti riservati. */
+/* © 2027 Max Pisani - PACommunication. Tutti i diritti riservati. */
 import { UserData } from '../types';
 
 export const NOT_AVAILABLE = 'Dato non disponibile';
@@ -58,7 +58,7 @@ export interface NormalizedReportData {
   };
   induttore: {
     hasData: boolean;
-    risultato: 'Destro' | 'Sinistro' | '';
+    risultato: 'Destro' | 'Sinistro' | 'Non chiaro' | '';
     risultatoLabel: string;
     faseArchetipo: string;
     tema: string;
@@ -76,8 +76,10 @@ export interface NormalizedReportData {
     isComplete: boolean;
     isPartial: boolean;
     validCount: number;
+    applicableCount: number;
     totalCount: number;
     missingLabels: string[];
+    areeNonApplicabili: string[];
     prioritario: string;
     areeDistoniche: string[];
     areeSoddisfatte: string[];
@@ -250,6 +252,7 @@ function formatDistonicAreaStatus(value: unknown): string {
   const clean = safeString(value);
   if (clean === 'NO') return 'Distonia emersa (NO)';
   if (clean === 'SI') return 'Soddisfazione / equilibrio (SÌ)';
+  if (clean === 'NON_APPLICABILE') return 'Non applicabile';
   return NOT_AVAILABLE;
 }
 
@@ -318,9 +321,12 @@ export function normalizeReportData(userData: UserData | Partial<UserData> | und
   };
 
   // Induttore (strictly separated from T.A.P.)
-  const induttoreRes = safeUser.induttoreResult === 'Destro' || safeUser.induttoreResult === 'Sinistro'
-    ? safeUser.induttoreResult
-    : '';
+  const induttoreRes =
+    safeUser.induttoreResult === 'Destro' ||
+    safeUser.induttoreResult === 'Sinistro' ||
+    safeUser.induttoreResult === 'Non chiaro'
+      ? safeUser.induttoreResult
+      : '';
   const manoDestraRaw = safeString(safeUser.testInduttore?.manoDestra);
   const manoSinistraRaw = safeString(safeUser.testInduttore?.manoSinistra);
   const induttoreHasHands = Boolean(
@@ -329,24 +335,30 @@ export function normalizeReportData(userData: UserData | Partial<UserData> | und
   );
   const induttore = {
     hasData: Boolean(induttoreRes) || induttoreHasHands,
-    risultato: induttoreRes as 'Destro' | 'Sinistro' | '',
+    risultato: induttoreRes as 'Destro' | 'Sinistro' | 'Non chiaro' | '',
     risultatoLabel:
       induttoreRes === 'Destro'
         ? 'Induttore Destro'
         : induttoreRes === 'Sinistro'
         ? 'Induttore Sinistro'
+        : induttoreRes === 'Non chiaro'
+        ? 'Non chiaro'
         : NOT_AVAILABLE,
     faseArchetipo:
       induttoreRes === 'Destro'
         ? 'Fase Istituzionale (Grillo Parlante)'
         : induttoreRes === 'Sinistro'
         ? 'Fase Trasgressiva (Lucignolo)'
+        : induttoreRes === 'Non chiaro'
+        ? 'Esito ambivalente / Non chiaro'
         : NOT_AVAILABLE,
     tema:
       induttoreRes === 'Destro'
         ? 'Tema della libertà'
         : induttoreRes === 'Sinistro'
         ? 'Tema del sogno'
+        : induttoreRes === 'Non chiaro'
+        ? 'Nessuna polarità forzata (consigliata una breve pausa prima di un eventuale secondo tentativo)'
         : NOT_AVAILABLE,
     manoDestra: manoDestraRaw && manoDestraRaw !== 'Non Rilevato' ? manoDestraRaw : NOT_AVAILABLE,
     manoSinistra: manoSinistraRaw && manoSinistraRaw !== 'Non Rilevato' ? manoSinistraRaw : NOT_AVAILABLE,
@@ -375,7 +387,7 @@ export function normalizeReportData(userData: UserData | Partial<UserData> | und
     statoCalibrazione,
   };
 
-  // 5 Punti Distonici (completo solo con tutte e 5 le risposte SI o NO valide)
+  // 5 Punti Distonici (completo quando tutte le aree applicabili hanno risposta SI o NO valida)
   const pdObj = (safeUser.puntiDistonici && typeof safeUser.puntiDistonici === 'object'
     ? safeUser.puntiDistonici
     : {}) as Partial<UserData['puntiDistonici']>;
@@ -388,11 +400,14 @@ export function normalizeReportData(userData: UserData | Partial<UserData> | und
       display: formatDistonicAreaStatus(raw),
     };
   });
-  const pdValidCount = pdDettaglio.filter((d) => isValidSiNo(d.raw)).length;
+  const pdApplicableItems = pdDettaglio.filter((d) => d.raw !== 'NON_APPLICABILE');
+  const pdNonApplicabili = pdDettaglio.filter((d) => d.raw === 'NON_APPLICABILE').map((d) => d.label);
+  const pdValidCount = pdApplicableItems.filter((d) => isValidSiNo(d.raw)).length;
+  const pdApplicableCount = pdApplicableItems.length;
   const pdTotalCount = PUNTI_DISTONICI_META.length;
-  const pdMissingLabels = pdDettaglio.filter((d) => !isValidSiNo(d.raw)).map((d) => d.label);
-  const pdIsComplete = pdValidCount === pdTotalCount;
-  const pdIsPartial = pdValidCount > 0 && pdValidCount < pdTotalCount;
+  const pdMissingLabels = pdApplicableItems.filter((d) => !isValidSiNo(d.raw)).map((d) => d.label);
+  const pdIsComplete = pdApplicableCount > 0 && pdValidCount === pdApplicableCount;
+  const pdIsPartial = pdValidCount > 0 && pdValidCount < pdApplicableCount;
   const pdHasData = pdValidCount > 0;
   const areeDistoniche = pdDettaglio.filter((d) => d.raw === 'NO').map((d) => d.label);
   const areeSoddisfatte = pdDettaglio.filter((d) => d.raw === 'SI').map((d) => d.label);
@@ -403,16 +418,18 @@ export function normalizeReportData(userData: UserData | Partial<UserData> | und
   } else if (pdIsPartial) {
     pdPrioritario =
       pdPrioritarioRaw && !isNegativePriorityOutcome(pdPrioritarioRaw)
-        ? `${pdPrioritarioRaw} (su risultato parziale: ${pdValidCount} su ${pdTotalCount} risposte valide)`
-        : `${NOT_AVAILABLE} (risultato parziale: ${pdValidCount} su ${pdTotalCount} risposte valide)`;
+        ? `${pdPrioritarioRaw} (su risultato parziale: ${pdValidCount} su ${pdApplicableCount} risposte valide)`
+        : `${NOT_AVAILABLE} (risultato parziale: ${pdValidCount} su ${pdApplicableCount} risposte valide)`;
   }
   const puntiDistonici = {
     hasData: pdHasData,
     isComplete: pdIsComplete,
     isPartial: pdIsPartial,
     validCount: pdValidCount,
+    applicableCount: pdApplicableCount,
     totalCount: pdTotalCount,
     missingLabels: pdMissingLabels,
+    areeNonApplicabili: pdNonApplicabili,
     prioritario: pdPrioritario,
     areeDistoniche,
     areeSoddisfatte,
@@ -565,7 +582,7 @@ export function generateAnalogicalAnalysis(userData: UserData): AnalysisSummary 
     ? `Tipologia rilevata: ${data.tap.tipologia}. Polarità / distonia: ${data.tap.polarita} (${data.tap.distonia}). Dinamica registrata: ${data.tap.dinamica}`
     : `${NOT_AVAILABLE} (Test T.A.P. non completato o non valido). Il risultato del T.A.P. resta sempre distinto da quello del Test Induttore.`;
 
-  // 2. Induttore (Destro = Istituzionale / Grillo Parlante / Libertà; Sinistro = Trasgressivo / Lucignolo / Sogno)
+  // 2. Induttore (Destro = Istituzionale / Grillo Parlante / Libertà; Sinistro = Trasgressivo / Lucignolo / Sogno; Non chiaro = ambivalente)
   let faseInconscia: string;
   if (data.induttore.risultato === 'Destro') {
     faseInconscia =
@@ -573,6 +590,8 @@ export function generateAnalogicalAnalysis(userData: UserData): AnalysisSummary 
   } else if (data.induttore.risultato === 'Sinistro') {
     faseInconscia =
       'Induttore Sinistro: Fase Trasgressiva (archetipo di Lucignolo), orientata al tema del sogno. Secondo il modello segnala una dinamica legata a desiderio, slancio emotivo e ricerca di appagamento.';
+  } else if (data.induttore.risultato === 'Non chiaro') {
+    faseInconscia = `Esito Induttore: Non chiaro (rilevazioni delle mani: Destra ${data.induttore.manoDestra}, Sinistra ${data.induttore.manoSinistra}). Le due mani hanno mostrato la stessa direzione senza polarità netta; puoi fare una breve pausa e ripetere una volta oppure lasciare registrato «Non chiaro».`;
   } else if (data.induttore.hasData) {
     faseInconscia = `${NOT_AVAILABLE} (rilevazioni delle mani registrate: Destra ${data.induttore.manoDestra}, Sinistra ${data.induttore.manoSinistra}; risultato Induttore netto non emerso).`;
   } else {
@@ -584,23 +603,29 @@ export function generateAnalogicalAnalysis(userData: UserData): AnalysisSummary 
     ? `Verifica Sì/No (calibrazione del canale, non profilo di personalità): Nome vero = ${data.testNome.nomeVero}; Nome falso = ${data.testNome.nomeFalso}. Esito: ${data.testNome.statoCalibrazione}.`
     : `${NOT_AVAILABLE} (Test del Nome non completato; serve esclusivamente come verifica Sì/No di calibrazione e non definisce la personalità).`;
 
-  // 4. Punti Distonici (5 aree + prioritario)
+  // 4. Punti Distonici (aree applicabili + prioritario)
   let areaConflitto: string;
+  const naSuffix =
+    data.puntiDistonici.areeNonApplicabili.length > 0
+      ? ` Aree contrassegnate come non applicabili: ${data.puntiDistonici.areeNonApplicabili.join(', ')}.`
+      : '';
   if (!data.puntiDistonici.hasData) {
-    areaConflitto = `${NOT_AVAILABLE} (Test Punti Distonici non completato: 0 su ${data.puntiDistonici.totalCount} risposte SÌ/NO valide).`;
+    areaConflitto = `${NOT_AVAILABLE} (Test Punti Distonici non completato: 0 su ${data.puntiDistonici.applicableCount} risposte SÌ/NO valide).${naSuffix}`;
   } else if (data.puntiDistonici.isPartial) {
     const missingText = data.puntiDistonici.missingLabels.join(', ');
     if (data.puntiDistonici.areeDistoniche.length > 0) {
-      areaConflitto = `Risultato parziale (${data.puntiDistonici.validCount} su ${data.puntiDistonici.totalCount} risposte valide; dati mancanti: ${missingText}). Punto distonico prioritario: ${data.puntiDistonici.prioritario}. Aree con segnale di distonia emerse finora (NO): ${data.puntiDistonici.areeDistoniche.join(', ')}.`;
+      areaConflitto = `Risultato parziale (${data.puntiDistonici.validCount} su ${data.puntiDistonici.applicableCount} risposte valide; dati mancanti: ${missingText}). Punto distonico prioritario: ${data.puntiDistonici.prioritario}. Aree con segnale di distonia emerse finora (NO): ${data.puntiDistonici.areeDistoniche.join(', ')}.${naSuffix}`;
     } else {
-      areaConflitto = `Risultato parziale (${data.puntiDistonici.validCount} su ${data.puntiDistonici.totalCount} risposte valide; dati mancanti: ${missingText}). Punto distonico prioritario: ${data.puntiDistonici.prioritario}. Aree con segnale di distonia (NO): risultato parziale non conclusivo fino al completamento di tutte e 5 le aree.`;
+      areaConflitto = `Risultato parziale (${data.puntiDistonici.validCount} su ${data.puntiDistonici.applicableCount} risposte valide; dati mancanti: ${missingText}). Punto distonico prioritario: ${data.puntiDistonici.prioritario}. Aree con segnale di distonia (NO): risultato parziale non conclusivo fino al completamento delle aree applicabili.${naSuffix}`;
     }
   } else {
     const emerseText =
       data.puntiDistonici.areeDistoniche.length > 0
         ? data.puntiDistonici.areeDistoniche.join(', ')
-        : 'nessuna area distonica emersa nelle 5 risposte';
-    areaConflitto = `Punto distonico prioritario: ${data.puntiDistonici.prioritario}. Aree con segnale di distonia (NO): ${emerseText}.`;
+        : data.puntiDistonici.applicableCount === 5
+        ? 'nessuna area distonica emersa nelle 5 risposte'
+        : `nessuna area distonica emersa nelle ${data.puntiDistonici.applicableCount} aree applicabili`;
+    areaConflitto = `Punto distonico prioritario: ${data.puntiDistonici.prioritario}. Aree con segnale di distonia (NO): ${emerseText}.${naSuffix}`;
   }
 
   // 5. Sigilli e Vincoli (tutti i SÌ emersi + prioritario)
@@ -622,22 +647,19 @@ export function generateAnalogicalAnalysis(userData: UserData): AnalysisSummary 
     sigilloDifesa = `Sigillo prioritario: ${data.sigilli.prioritario}. Tutti i sigilli emersi (SÌ): ${emersiText}.`;
   }
 
-  // 6. Time Line, Giorno & Testimone (ipotesi esplorative, indipendenti tra loro)
+  // 6. Età ipotizzata, Giorno & Testimone (ipotesi esplorative, indipendenti tra loro — Scelta 1: nessun PU/PT/CDT esposto)
   const timelineParts: string[] = [];
   if (data.timeLine.hasValidAge) {
     timelineParts.push(`Età ipotizzata per l'evento: ${data.timeLine.etaEventoCausa}`);
   } else {
-    timelineParts.push(`Età ipotizzata Time Line: ${NOT_AVAILABLE}`);
-  }
-  if (data.timeLine.diagnosi !== NOT_AVAILABLE) {
-    timelineParts.push(`Lettura analogica del modello sulla Time Line: ${data.timeLine.diagnosi}`);
+    timelineParts.push(`Età ipotizzata evento: ${NOT_AVAILABLE}`);
   }
   timelineParts.push(`Periodo / Giorno rilevato: ${data.passo5.giornoEventoDisplay}`);
   timelineParts.push(`Testimone chiave ipotizzato: ${data.passo5.testimoneDisplay}`);
   const imprintingTimeline =
-    data.timeLine.hasData || data.passo5.hasGiornoEvento || data.passo5.hasTestimoneIdentificato
+    data.timeLine.hasValidAge || data.passo5.hasGiornoEvento || data.passo5.hasTestimoneIdentificato
       ? `${timelineParts.join('. ')}. (Elementi da intendere esclusivamente come ipotesi esplorative del modello, non come fatti o ricordi accertati).`
-      : `${NOT_AVAILABLE} (Time Line, Giorno e Testimone non ancora rilevati).`;
+      : `${NOT_AVAILABLE} (Età ipotizzata, Giorno e Testimone non ancora rilevati).`;
 
   // 7. Reazione al Torto & Tendenze (domande distinte, concordi/discordanti solo se entrambe SÌ/NO)
   const tortoLines: string[] = [
@@ -674,7 +696,7 @@ export function generateAnalogicalAnalysis(userData: UserData): AnalysisSummary 
   if (!data.hasAnyTestData) {
     sintesiCompleta = [
       `Gentile ${data.nome === NOT_AVAILABLE ? 'Utente' : data.nome}, al momento non risultano test completati sufficienti per elaborare un riepilogo incrociato.`,
-      'Completa i test disponibili nella Home (in particolare I Tuoi Dati, T.A.P., Induttore, Punti Distonici, Sigilli e Vincoli e la ricerca causa su Time Line, Giorno e Testimone) per ottenere la sintesi basata sui tuoi esiti reali.',
+      'Completa i test disponibili nella Home (in particolare I Tuoi Dati, T.A.P., Induttore, Punti Distonici, Sigilli e Vincoli e la ricerca causa su Età ipotizzata, Giorno e Testimone) per ottenere la sintesi basata sui tuoi esiti reali.',
       disclaimer,
     ].join('\n\n');
   } else {
@@ -704,30 +726,40 @@ export function generateAnalogicalAnalysis(userData: UserData): AnalysisSummary 
       structureBits.push(
         "nell'Induttore risulta il lato Sinistro (Fase Trasgressiva / Lucignolo, tema del sogno)"
       );
+    } else if (data.induttore.risultato === 'Non chiaro') {
+      structureBits.push(
+        "nell'Induttore l'esito è risultato Non chiaro (combinazione ambivalente)"
+      );
     } else {
       structureBits.push("l'esito dell'Induttore risulta al momento non disponibile");
     }
     paragraphs.push(`Struttura e fase (test mantenuti distinti): ${structureBits.join('; ')}.`);
 
     const conflictBits: string[] = [];
+    const pdNaText =
+      data.puntiDistonici.areeNonApplicabili.length > 0
+        ? `; non applicabili: ${data.puntiDistonici.areeNonApplicabili.join(', ')}`
+        : '';
     if (!data.puntiDistonici.hasData) {
-      conflictBits.push(`Punti Distonici: ${NOT_AVAILABLE}`);
+      conflictBits.push(`Punti Distonici: ${NOT_AVAILABLE}${pdNaText}`);
     } else if (data.puntiDistonici.isPartial) {
       const missingText = data.puntiDistonici.missingLabels.join(', ');
       const partialList =
         data.puntiDistonici.areeDistoniche.length > 0
           ? `aree distoniche emerse finora (NO): ${data.puntiDistonici.areeDistoniche.join(', ')}`
-          : 'esito parziale non conclusivo fino al completamento delle 5 aree';
+          : 'esito parziale non conclusivo fino al completamento delle aree applicabili';
       conflictBits.push(
-        `Punti Distonici (risultato parziale, ${data.puntiDistonici.validCount}/${data.puntiDistonici.totalCount} risposte valide; mancano: ${missingText}) — prioritario: ${data.puntiDistonici.prioritario} (${partialList})`
+        `Punti Distonici (risultato parziale, ${data.puntiDistonici.validCount}/${data.puntiDistonici.applicableCount} risposte valide; mancano: ${missingText}${pdNaText}) — prioritario: ${data.puntiDistonici.prioritario} (${partialList})`
       );
     } else {
       const distList =
         data.puntiDistonici.areeDistoniche.length > 0
           ? `aree distoniche emerse: ${data.puntiDistonici.areeDistoniche.join(', ')}`
-          : 'nessuna area distonica emersa nelle 5 risposte';
+          : data.puntiDistonici.applicableCount === 5
+          ? 'nessuna area distonica emersa nelle 5 risposte'
+          : `nessuna area distonica emersa nelle ${data.puntiDistonici.applicableCount} aree applicabili`;
       conflictBits.push(
-        `Punti Distonici — prioritario: ${data.puntiDistonici.prioritario} (${distList})`
+        `Punti Distonici — prioritario: ${data.puntiDistonici.prioritario} (${distList}${pdNaText})`
       );
     }
 
@@ -755,9 +787,6 @@ export function generateAnalogicalAnalysis(userData: UserData): AnalysisSummary 
     if (data.timeLine.hasValidAge) {
       step5Bits.push(`età ipotizzata ${data.timeLine.etaEventoCausa}`);
     }
-    if (data.timeLine.diagnosi !== NOT_AVAILABLE) {
-      step5Bits.push(`lettura Time Line «${data.timeLine.diagnosi}»`);
-    }
     if (data.passo5.hasGiornoEvento) {
       step5Bits.push(`periodo/giorno ${data.passo5.giornoEventoDisplay}`);
     }
@@ -784,7 +813,7 @@ export function generateAnalogicalAnalysis(userData: UserData): AnalysisSummary 
       );
     } else {
       paragraphs.push(
-        `Ipotesi esplorative (Time Line, Giorno, Testimone e Torto): ${NOT_AVAILABLE}.`
+        `Ipotesi esplorative (Età ipotizzata, Giorno, Testimone e Torto): ${NOT_AVAILABLE}.`
       );
     }
 
@@ -813,7 +842,7 @@ export function generateAnalogicalAnalysis(userData: UserData): AnalysisSummary 
     `Test del Nome. ${calibrazioneNome}`,
     `Punti Distonici. ${areaConflitto}`,
     `Sigilli e Vincoli. ${sigilloDifesa}`,
-    `Time Line, Giorno e Testimone. ${imprintingTimeline}`,
+    `Età, Giorno e Testimone. ${imprintingTimeline}`,
     `Reazione al Torto. ${meccanismoReattivo}`,
     `Indicazione Metodologica. ${consiglioAnalogico}`,
   ];
