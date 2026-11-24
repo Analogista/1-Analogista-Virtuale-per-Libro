@@ -25,16 +25,60 @@
         "lastLogin": { "type": "string", "format": "date-time" }
       },
       "required": ["email", "role"]
+    },
+    "AnalogicalCycleT0": {
+      "title": "Analogical Cycle T0 Baseline",
+      "description": "Immutable T0 initial baseline snapshot captured after all 5 Phase 1 tests are validated.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128, "description": "Owner Firebase UID" },
+        "cycleNumber": { "type": "integer", "description": "Sequential cycle index for this user" },
+        "locked": { "type": "boolean", "description": "Must be true; T0 cannot be updated after creation" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server creation timestamp" },
+        "puntiDistonici": { "type": "object", "description": "Map of the 5 life areas (SI, NO, NON_APPLICABILE)" },
+        "sigilli": { "type": "object", "description": "Map of the 4 sigilli (SI, NO)" },
+        "induttoreResult": { "type": "string", "enum": ["Destro", "Sinistro", "Non chiaro"], "description": "Induttore test outcome" },
+        "tapTipologia": { "type": "string", "maxLength": 120, "description": "Validated T.A.P. typology" },
+        "testNome": { "type": "object", "description": "Map with nomeVero and nomeFalso (SI, NO)" },
+        "puntoDistonicoFinale": { "type": "string", "maxLength": 120 },
+        "sigilloFinale": { "type": "string", "maxLength": 120 },
+        "etaEventoCausa": { "type": "string", "maxLength": 40 },
+        "giornoEvento": { "type": "string", "maxLength": 80 },
+        "testimoneChiave": { "type": "string", "maxLength": 120 }
+      },
+      "required": ["userId", "cycleNumber", "locked", "createdAt", "puntiDistonici", "sigilli", "induttoreResult", "tapTipologia", "testNome"]
+    },
+    "PeriodicCheckin": {
+      "title": "Periodic Check-in",
+      "description": "Append-only periodic check-in (0-10 subjective scale) linked to an immutable T0 cycle.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128, "description": "Owner Firebase UID" },
+        "cycleId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$", "description": "Parent T0 cycle ID" },
+        "milestone": { "type": "string", "enum": ["G1", "G7", "G14", "G21", "SUCCESSIVA"], "description": "Periodic milestone code" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server creation timestamp" },
+        "aree": { "type": "object", "description": "Map of the 5 life areas (0..10 or NON_APPLICABILE)" },
+        "testNomeSnapshot": { "type": "object", "description": "Optional Test del Nome snapshot" }
+      },
+      "required": ["userId", "cycleId", "milestone", "createdAt", "aree"]
     }
   },
   "firestore": {
     "sessions/{sessionId}": {
       "schema": "UserSession",
-      "description": "Collection of all diagnostic sessions."
+      "description": "Collection of all saved sessions."
     },
     "users/{userId}": {
       "schema": "UserProfile",
       "description": "User profile data."
+    },
+    "cycles/{cycleId}": {
+      "schema": "AnalogicalCycleT0",
+      "description": "Immutable T0 baseline snapshots."
+    },
+    "cycles/{cycleId}/checkins/{checkinId}": {
+      "schema": "PeriodicCheckin",
+      "description": "Append-only periodic check-ins linked to a T0 cycle."
     }
   }
 }

@@ -2,6 +2,7 @@ import js from "@eslint/js";
 import react from "eslint-plugin-react";
 import reactHooks from "eslint-plugin-react-hooks";
 import tseslint from "typescript-eslint";
+import firebaseRulesPlugin from "@firebase/eslint-plugin-security-rules";
 
 export default tseslint.config(
   { ignores: ["dist"] },
@@ -22,5 +23,6 @@ export default tseslint.config(
       "@typescript-eslint/no-unused-vars": "warn",
       "@typescript-eslint/no-explicit-any": "off"
     },
-  }
+  },
+  firebaseRulesPlugin.configs["flat/recommended"]
 );

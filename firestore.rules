@@ -12,23 +12,30 @@ service cloud.firestore {
     }
 
     function isEmailVerified() {
-      // Google Auth usually provides this, but we check explicitly for the admin email
       return isSignedIn() && request.auth.token.email_verified == true;
     }
 
     function isAdmin() {
       // CRITICAL: Dedicated check for the specialist's email
-      return isSignedIn() && 
-             request.auth.token.email == 'analogistabrindisi@gmail.com' && 
+      return isSignedIn() &&
+             request.auth.token.email == 'analogistabrindisi@gmail.com' &&
              isEmailVerified();
     }
 
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
-    
-    function isValidId(id) { 
-      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); 
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
     }
 
     // --- Validations ---
@@ -46,22 +53,122 @@ service cloud.firestore {
              data.role in ['user', 'admin'];
     }
 
+    function isValidPuntiDistoniciMap(m) {
+      return m is map &&
+             m.keys().hasAll(['famiglia', 'famigliaAcquisita', 'sentimentali', 'sessuali', 'autorealizzazione']) &&
+             m.keys().hasOnly(['famiglia', 'famigliaAcquisita', 'sentimentali', 'sessuali', 'autorealizzazione']) &&
+             m.famiglia in ['SI', 'NO', 'NON_APPLICABILE'] &&
+             m.famigliaAcquisita in ['SI', 'NO', 'NON_APPLICABILE'] &&
+             m.sentimentali in ['SI', 'NO', 'NON_APPLICABILE'] &&
+             m.sessuali in ['SI', 'NO', 'NON_APPLICABILE'] &&
+             m.autorealizzazione in ['SI', 'NO', 'NON_APPLICABILE'];
+    }
+
+    function isValidSigilliMap(m) {
+      return m is map &&
+             m.keys().hasAll(['colpa', 'abbandono', 'disistima', 'giudizio']) &&
+             m.keys().hasOnly(['colpa', 'abbandono', 'disistima', 'giudizio']) &&
+             m.colpa in ['SI', 'NO'] &&
+             m.abbandono in ['SI', 'NO'] &&
+             m.disistima in ['SI', 'NO'] &&
+             m.giudizio in ['SI', 'NO'];
+    }
+
+    function isValidNomeMap(m) {
+      return m is map &&
+             m.keys().hasAll(['nomeVero', 'nomeFalso']) &&
+             m.keys().hasOnly(['nomeVero', 'nomeFalso']) &&
+             m.nomeVero in ['SI', 'NO'] &&
+             m.nomeFalso in ['SI', 'NO'];
+    }
+
+    function isValidCycleT0(data) {
+      return data.keys().hasAll([
+               'userId',
+               'cycleNumber',
+               'locked',
+               'createdAt',
+               'puntiDistonici',
+               'sigilli',
+               'induttoreResult',
+               'tapTipologia',
+               'testNome'
+             ]) &&
+             data.keys().hasOnly([
+               'userId',
+               'cycleNumber',
+               'locked',
+               'createdAt',
+               'puntiDistonici',
+               'sigilli',
+               'induttoreResult',
+               'tapTipologia',
+               'testNome',
+               'puntoDistonicoFinale',
+               'sigilloFinale',
+               'etaEventoCausa',
+               'giornoEvento',
+               'testimoneChiave'
+             ]) &&
+             data.userId is string && data.userId.size() > 0 && data.userId.size() <= 128 &&
+             data.userId == request.auth.uid &&
+             data.cycleNumber is int && data.cycleNumber >= 1 && data.cycleNumber <= 1000 &&
+             data.locked is bool && data.locked == true &&
+             data.createdAt == request.time &&
+             isValidPuntiDistoniciMap(data.puntiDistonici) &&
+             isValidSigilliMap(data.sigilli) &&
+             data.induttoreResult in ['Destro', 'Sinistro', 'Non chiaro'] &&
+             data.tapTipologia is string && data.tapTipologia.size() >= 1 && data.tapTipologia.size() <= 120 &&
+             isValidNomeMap(data.testNome) &&
+             (!('puntoDistonicoFinale' in data) || (data.puntoDistonicoFinale is string && data.puntoDistonicoFinale.size() <= 120)) &&
+             (!('sigilloFinale' in data) || (data.sigilloFinale is string && data.sigilloFinale.size() <= 120)) &&
+             (!('etaEventoCausa' in data) || (data.etaEventoCausa is string && data.etaEventoCausa.size() <= 40)) &&
+             (!('giornoEvento' in data) || (data.giornoEvento is string && data.giornoEvento.size() <= 80)) &&
+             (!('testimoneChiave' in data) || (data.testimoneChiave is string && data.testimoneChiave.size() <= 120));
+    }
+
+    function isValidAreaScore(val) {
+      return (val is number && val >= 0 && val <= 10) || val == 'NON_APPLICABILE';
+    }
+
+    function isValidCheckin(data, cycleId) {
+      return data.keys().hasAll(['userId', 'cycleId', 'milestone', 'createdAt', 'aree']) &&
+             data.keys().hasOnly(['userId', 'cycleId', 'milestone', 'createdAt', 'aree', 'testNomeSnapshot']) &&
+             data.userId is string && data.userId.size() > 0 && data.userId.size() <= 128 &&
+             data.userId == request.auth.uid &&
+             data.cycleId is string && data.cycleId == cycleId && isValidId(data.cycleId) &&
+             data.milestone in ['G1', 'G7', 'G14', 'G21', 'SUCCESSIVA'] &&
+             data.createdAt == request.time &&
+             data.aree is map &&
+             data.aree.keys().hasAll(['famiglia', 'famigliaAcquisita', 'sentimentali', 'sessuali', 'autorealizzazione']) &&
+             data.aree.keys().hasOnly(['famiglia', 'famigliaAcquisita', 'sentimentali', 'sessuali', 'autorealizzazione']) &&
+             isValidAreaScore(data.aree.famiglia) &&
+             isValidAreaScore(data.aree.famigliaAcquisita) &&
+             isValidAreaScore(data.aree.sentimentali) &&
+             isValidAreaScore(data.aree.sessuali) &&
+             isValidAreaScore(data.aree.autorealizzazione) &&
+             (!('testNomeSnapshot' in data) || (
+               data.testNomeSnapshot is map &&
+               data.testNomeSnapshot.keys().hasAll(['nomeVero', 'nomeFalso']) &&
+               data.testNomeSnapshot.keys().hasOnly(['nomeVero', 'nomeFalso']) &&
+               data.testNomeSnapshot.nomeVero in ['SI', 'NO', 'NON_RILEVATO'] &&
+               data.testNomeSnapshot.nomeFalso in ['SI', 'NO', 'NON_RILEVATO']
+             ));
+    }
+
     // --- Collections ---
 
     // Sessions
     match /sessions/{sessionId} {
       allow get: if isSignedIn() && (isAdmin() || resource.data.userId == request.auth.uid);
-      
-      // Admin sees everything; users see only theirs.
-      // Every allow list block MUST explicitly evaluate resource.data to prevent unauthorized scraping.
       allow list: if isSignedIn() && (isAdmin() || resource.data.userId == request.auth.uid);
 
-      allow create: if isSignedIn() && 
-                    isValidSession(request.resource.data) && 
+      allow create: if isSignedIn() &&
+                    isValidSession(request.resource.data) &&
                     request.resource.data.userId == request.auth.uid &&
                     request.resource.data.createdAt == request.time;
-                    
-      allow update: if isSignedIn() && 
+
+      allow update: if isSignedIn() &&
                     (isAdmin() || resource.data.userId == request.auth.uid) &&
                     isValidSession(request.resource.data) &&
                     request.resource.data.userId == resource.data.userId &&
@@ -70,7 +177,39 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    
+    // Cycles (T0 immutable baseline snapshots)
+    match /cycles/{cycleId} {
+      allow get: if isSignedIn() && isValidId(cycleId) && (isAdmin() || existing().userId == request.auth.uid);
+      allow list: if isSignedIn() && (isAdmin() || existing().userId == request.auth.uid);
+
+      allow create: if isEmailVerified() &&
+                    isValidId(cycleId) &&
+                    isValidCycleT0(incoming());
+
+      // Immutabilita tecnica di T0: nessun aggiornamento consentito dopo la creazione
+      allow update: if false;
+
+      allow delete: if isSignedIn() && isValidId(cycleId) && (isAdmin() || existing().userId == request.auth.uid);
+
+      // Periodic check-ins (append-only, linked to parent immutable T0)
+      match /checkins/{checkinId} {
+        allow get: if isSignedIn() && isValidId(cycleId) && isValidId(checkinId) && (isAdmin() || existing().userId == request.auth.uid);
+        allow list: if isSignedIn() && (isAdmin() || existing().userId == request.auth.uid);
+
+        allow create: if isEmailVerified() &&
+                      isValidId(cycleId) &&
+                      isValidId(checkinId) &&
+                      isValidCheckin(incoming(), cycleId) &&
+                      exists(/databases/$(database)/documents/cycles/$(cycleId)) &&
+                      get(/databases/$(database)/documents/cycles/$(cycleId)).data.userId == request.auth.uid &&
+                      get(/databases/$(database)/documents/cycles/$(cycleId)).data.locked == true;
+
+        allow update: if false;
+
+        allow delete: if isSignedIn() && isValidId(cycleId) && isValidId(checkinId) && (isAdmin() || existing().userId == request.auth.uid);
+      }
+    }
+
     // Feedback
     match /feedback/{feedbackId} {
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
@@ -81,7 +220,7 @@ service cloud.firestore {
     match /users/{userId} {
       allow get: if isOwner(userId) || isAdmin();
       allow create: if isOwner(userId) && isValidUser(request.resource.data) && request.resource.data.role == 'user';
-      allow update: if isOwner(userId) && isValidUser(request.resource.data) && 
+      allow update: if isOwner(userId) && isValidUser(request.resource.data) &&
                     request.resource.data.role == resource.data.get('role', 'user'); // Prevent self-promoting
       allow list: if isAdmin();
     }

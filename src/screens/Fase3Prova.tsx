@@ -1,48 +1,33 @@
 /* © 2027 Max Pisani - PACommunication. Tutti i diritti riservati. */
 import React, { useEffect, useMemo, useState } from 'react';
+import { sendEmailVerification } from 'firebase/auth';
 import { useUser } from '../contexts/UserContext';
+import { useAuth } from '../contexts/AuthContext';
 import { PUNTI_DISTONICI_META, SIGILLI_META } from '../utils/AnalysisEngine';
+import {
+  buildT0SnapshotFromUserData,
+  deleteCycleFromFirestore,
+  Fase3CheckinEntry,
+  Fase3LocalStore,
+  Fase3T0Snapshot,
+  freezeCycleT0ToFirestore,
+  generateFirestoreSafeId,
+  loadRemoteCyclesAndLatest,
+  MilestoneCode,
+  PuntiAreaKey,
+  readLocalFase3,
+  saveCheckinToFirestore,
+  validateDraftT0,
+  writeLocalFase3,
+} from '../utils/fase3Cycles';
 import type { UserData } from '../types';
 
 interface ScreenProps {
   setPage: (page: number | string) => void;
 }
 
-type PuntiAreaKey = keyof NonNullable<UserData['puntiDistonici']>;
 type PuntiAreaRaw = UserData['puntiDistonici'][PuntiAreaKey];
-type SigilloKey = keyof NonNullable<UserData['sigilli']>;
-type MilestoneCode = 'G1' | 'G7' | 'G14' | 'G21' | 'SUCCESSIVA';
-
-interface Fase3T0Snapshot {
-  createdAtIso: string;
-  puntiDistonici: Record<PuntiAreaKey, PuntiAreaRaw>;
-  puntoDistonicoFinale: string;
-  sigilli: Record<SigilloKey, string>;
-  sigilloFinale: string;
-  induttoreResult: string;
-  tapTipologia: string;
-  etaEventoCausa: string;
-  giornoEvento: string;
-  testimoneChiave: string;
-}
-
-interface Fase3CheckinEntry {
-  id: string;
-  createdAtIso: string;
-  milestone: MilestoneCode;
-  aree: Record<PuntiAreaKey, number | 'NON_APPLICABILE'>;
-  testNomeSnapshot?: {
-    nomeVero: string;
-    nomeFalso: string;
-  };
-}
-
-interface Fase3LocalStore {
-  t0: Fase3T0Snapshot | null;
-  checkins: Fase3CheckinEntry[];
-}
-
-const FASE3_STORAGE_KEY = 'analogista_fase3_local_v1';
+type ScoreDraftMap = Record<PuntiAreaKey, number | 'NON_APPLICABILE' | null>;
 
 const MILESTONE_OPTIONS: { code: MilestoneCode; label: string }[] = [
   { code: 'G1', label: 'Giorno 1' },
@@ -53,33 +38,6 @@ const MILESTONE_OPTIONS: { code: MilestoneCode; label: string }[] = [
 ];
 
 const SCORE_SCALE = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as const;
-
-const PHASE_1_TESTS: {
-  id: 'tap' | 'induttore' | 'nome' | 'puntiDistonici' | 'sigilli';
-  label: string;
-}[] = [
-  { id: 'tap', label: '1. Test T.A.P.' },
-  { id: 'induttore', label: '2. Test Induttore' },
-  { id: 'nome', label: '3. Test del Nome' },
-  { id: 'puntiDistonici', label: '4. Test Punti Distonici' },
-  { id: 'sigilli', label: '5. Test Sigilli e Vincoli' },
-];
-
-type ScoreDraftMap = Record<PuntiAreaKey, number | 'NON_APPLICABILE' | null>;
-
-function readLocalFase3(): Fase3LocalStore {
-  try {
-    const raw = localStorage.getItem(FASE3_STORAGE_KEY);
-    if (!raw) return { t0: null, checkins: [] };
-    const parsed = JSON.parse(raw) as Partial<Fase3LocalStore>;
-    return {
-      t0: parsed && parsed.t0 && typeof parsed.t0 === 'object' ? parsed.t0 : null,
-      checkins: Array.isArray(parsed?.checkins) ? parsed.checkins : [],
-    };
-  } catch {
-    return { t0: null, checkins: [] };
-  }
-}
 
 function formatAreaStatus(val: PuntiAreaRaw | string | undefined): string {
   if (val === 'SI') return 'Sì';
@@ -114,53 +72,88 @@ function createInitialScores(t0: Fase3T0Snapshot | null): ScoreDraftMap {
 
 const Fase3Prova: React.FC<ScreenProps> = ({ setPage }) => {
   const { userData } = useUser();
-  const [store, setStore] = useState<Fase3LocalStore>(() => readLocalFase3());
+  const { user, openAuthModal } = useAuth();
+
+  const canUseVerifiedCloud = Boolean(user && user.emailVerified);
+
+  const [localStore, setLocalStore] = useState<Fase3LocalStore>(() => readLocalFase3());
+  const [cloudState, setCloudState] = useState<{
+    uid: string | null;
+    store: Fase3LocalStore;
+    totalCycles: number;
+    error: string | null;
+  }>({
+    uid: null,
+    store: { t0: null, checkins: [], nextCycleNumber: 1 },
+    totalCycles: 0,
+    error: null,
+  });
+  const [actionError, setActionError] = useState<string | null>(null);
+
+  const [verifiedAck, setVerifiedAck] = useState(false);
   const [confirmingT0, setConfirmingT0] = useState(false);
+  const [confirmingNewCycle, setConfirmingNewCycle] = useState(false);
+  const [confirmingDeleteCycle, setConfirmingDeleteCycle] = useState(false);
+  const [savingRemote, setSavingRemote] = useState(false);
+
   const [selectedMilestone, setSelectedMilestone] = useState<MilestoneCode>('G1');
   const [scores, setScores] = useState<ScoreDraftMap>(() =>
     createInitialScores(readLocalFase3().t0)
   );
   const [savedNotice, setSavedNotice] = useState<string | null>(null);
 
+  const store = canUseVerifiedCloud ? cloudState.store : localStore;
+  const cloudTotalCycles = canUseVerifiedCloud ? cloudState.totalCycles : 0;
+  const cloudLoading = canUseVerifiedCloud && cloudState.uid !== user?.uid;
+  const cloudSyncError = actionError ?? (canUseVerifiedCloud ? cloudState.error : null);
+
+  // Persistenza locale automatica solo quando in modalita locale
   useEffect(() => {
-    try {
-      localStorage.setItem(FASE3_STORAGE_KEY, JSON.stringify(store));
-    } catch (error) {
-      console.error('Errore nel salvataggio locale Fase 3:', error);
+    if (!canUseVerifiedCloud) {
+      writeLocalFase3(localStore);
     }
-  }, [store]);
+  }, [localStore, canUseVerifiedCloud]);
 
-  const draftT0 = useMemo<Fase3T0Snapshot>(() => ({
-    createdAtIso: new Date().toISOString(),
-    puntiDistonici: {
-      famiglia: userData.puntiDistonici?.famiglia || '',
-      famigliaAcquisita: userData.puntiDistonici?.famigliaAcquisita || '',
-      sentimentali: userData.puntiDistonici?.sentimentali || '',
-      sessuali: userData.puntiDistonici?.sessuali || '',
-      autorealizzazione: userData.puntiDistonici?.autorealizzazione || '',
-    },
-    puntoDistonicoFinale: userData.puntoDistonicoFinale || '',
-    sigilli: {
-      colpa: userData.sigilli?.colpa || '',
-      abbandono: userData.sigilli?.abbandono || '',
-      disistima: userData.sigilli?.disistima || '',
-      giudizio: userData.sigilli?.giudizio || '',
-    },
-    sigilloFinale: userData.sigilloFinale || '',
-    induttoreResult: userData.induttoreResult || '',
-    tapTipologia: userData.testTAP?.diagnosis?.isValid ? userData.testTAP.diagnosis.tipologia : '',
-    etaEventoCausa: userData.timeLine?.etaEventoCausa || '',
-    giornoEvento: userData.giornoEvento || '',
-    testimoneChiave: userData.testimoneChiave || '',
-  }), [userData]);
+  // Caricamento ciclo immutabile T0 da Firestore per utenti autenticati e verificati
+  useEffect(() => {
+    if (!canUseVerifiedCloud || !user) {
+      return;
+    }
 
-  const missingPhase1Tests = useMemo(() => {
-    const done = userData.completedTests ?? {};
-    return PHASE_1_TESTS.filter((test) => !done[test.id]);
-  }, [userData.completedTests]);
+    let cancelled = false;
+    void loadRemoteCyclesAndLatest(user.uid)
+      .then(({ latestT0, checkins, totalCycles }) => {
+        if (cancelled) return;
+        setCloudState({
+          uid: user.uid,
+          store: {
+            t0: latestT0,
+            checkins,
+            nextCycleNumber: totalCycles + 1,
+          },
+          totalCycles,
+          error: null,
+        });
+        setActionError(null);
+        setScores(createInitialScores(latestT0));
+      })
+      .catch((error) => {
+        console.error('Errore caricamento cicli T0 da Firestore:', error);
+        if (cancelled) return;
+        setCloudState((prev) => ({
+          ...prev,
+          uid: user.uid,
+          error: 'Impossibile leggere i cicli salvati su Firestore. Verifica la connessione e riprova.',
+        }));
+      });
 
-  const isPhase1Complete = missingPhase1Tests.length === 0;
+    return () => {
+      cancelled = true;
+    };
+  }, [canUseVerifiedCloud, user]);
 
+  const validation = useMemo(() => validateDraftT0(userData), [userData]);
+  const isPhase1Valid = validation.isValid;
   const activeT0 = store.t0;
 
   const missingScoreAreas = useMemo(() => {
@@ -172,30 +165,71 @@ const Fase3Prova: React.FC<ScreenProps> = ({ setPage }) => {
     });
   }, [activeT0, scores]);
 
-  const canSaveCheckin = Boolean(activeT0) && missingScoreAreas.length === 0;
+  const canSaveCheckin = Boolean(activeT0) && missingScoreAreas.length === 0 && !savingRemote;
 
-  const handleLockT0 = () => {
-    if (store.t0 || !isPhase1Complete) return;
-    const frozenSnapshot: Fase3T0Snapshot = {
-      ...draftT0,
-      createdAtIso: new Date().toISOString(),
-      puntiDistonici: { ...draftT0.puntiDistonici },
-      sigilli: { ...draftT0.sigilli },
-    };
-    setStore(prev => {
-      if (prev.t0) return prev;
-      return {
-        ...prev,
-        t0: frozenSnapshot,
-      };
-    });
-    setScores(createInitialScores(frozenSnapshot));
-    setConfirmingT0(false);
-    setSavedNotice('Fotografia iniziale T0 fissata localmente sul dispositivo.');
+  const handleResendVerification = async () => {
+    if (!user) return;
+    setActionError(null);
+    try {
+      await sendEmailVerification(user);
+      setSavedNotice('Email di verifica inviata. Conferma il link nella tua casella e poi ricarica la schermata.');
+    } catch {
+      setActionError('Impossibile inviare ora l’email di verifica. Riprova tra qualche minuto.');
+    }
   };
 
-  const handleSaveCheckin = () => {
-    if (!store.t0 || missingScoreAreas.length > 0) return;
+  const handleLockT0 = async () => {
+    if (store.t0 || !isPhase1Valid || !verifiedAck || savingRemote) return;
+    setActionError(null);
+
+    const cycleNumber = canUseVerifiedCloud
+      ? Math.max(1, cloudTotalCycles + 1)
+      : Math.max(1, store.nextCycleNumber || 1);
+    const cycleId = generateFirestoreSafeId('cyc');
+    const source = canUseVerifiedCloud ? 'firestore' : 'local';
+    const frozenSnapshot = buildT0SnapshotFromUserData(userData, cycleId, cycleNumber, source);
+
+    if (canUseVerifiedCloud && user) {
+      setSavingRemote(true);
+      try {
+        await freezeCycleT0ToFirestore(user.uid, frozenSnapshot);
+      } catch {
+        setActionError('Salvataggio T0 su Firestore non riuscito. T0 non è stata bloccata: riprova.');
+        setSavingRemote(false);
+        return;
+      }
+      setSavingRemote(false);
+      setCloudState((prev) => ({
+        uid: user.uid,
+        store: {
+          t0: frozenSnapshot,
+          checkins: [],
+          nextCycleNumber: cycleNumber + 1,
+        },
+        totalCycles: prev.totalCycles + 1,
+        error: null,
+      }));
+    } else {
+      setLocalStore({
+        t0: frozenSnapshot,
+        checkins: [],
+        nextCycleNumber: cycleNumber + 1,
+      });
+    }
+
+    setScores(createInitialScores(frozenSnapshot));
+    setConfirmingT0(false);
+    setVerifiedAck(false);
+    setSavedNotice(
+      canUseVerifiedCloud
+        ? 'Fotografia iniziale T0 congelata su Firestore (regole immutabili attive).'
+        : 'Fotografia iniziale T0 fissata localmente sul dispositivo.'
+    );
+  };
+
+  const handleSaveCheckin = async () => {
+    if (!store.t0 || missingScoreAreas.length > 0 || savingRemote) return;
+    setActionError(null);
 
     const cleanAreas = {} as Record<PuntiAreaKey, number | 'NON_APPLICABILE'>;
     for (const { key } of PUNTI_DISTONICI_META) {
@@ -209,31 +243,133 @@ const Fase3Prova: React.FC<ScreenProps> = ({ setPage }) => {
     }
 
     const newEntry: Fase3CheckinEntry = {
-      id: `chk_${Date.now()}`,
+      id: generateFirestoreSafeId('chk'),
+      cycleId: store.t0.cycleId,
       createdAtIso: new Date().toISOString(),
       milestone: selectedMilestone,
       aree: cleanAreas,
       testNomeSnapshot:
         userData.testNome?.nomeVero || userData.testNome?.nomeFalso
           ? {
-              nomeVero: userData.testNome?.nomeVero || 'NON_RILEVATO',
-              nomeFalso: userData.testNome?.nomeFalso || 'NON_RILEVATO',
+              nomeVero:
+                userData.testNome?.nomeVero === 'SI' || userData.testNome?.nomeVero === 'NO'
+                  ? userData.testNome.nomeVero
+                  : 'NON_RILEVATO',
+              nomeFalso:
+                userData.testNome?.nomeFalso === 'SI' || userData.testNome?.nomeFalso === 'NO'
+                  ? userData.testNome.nomeFalso
+                  : 'NON_RILEVATO',
             }
           : undefined,
     };
 
-    setStore(prev => ({
-      ...prev,
-      checkins: [...prev.checkins, newEntry],
-    }));
+    if (canUseVerifiedCloud && user) {
+      setSavingRemote(true);
+      try {
+        await saveCheckinToFirestore(user.uid, newEntry);
+      } catch {
+        setActionError('Salvataggio della verifica su Firestore non riuscito. Riprova.');
+        setSavingRemote(false);
+        return;
+      }
+      setSavingRemote(false);
+      setCloudState((prev) => ({
+        ...prev,
+        store: {
+          ...prev.store,
+          checkins: [...prev.store.checkins, newEntry],
+        },
+      }));
+    } else {
+      setLocalStore((prev) => ({
+        ...prev,
+        checkins: [...prev.checkins, newEntry],
+      }));
+    }
+
     setScores(createInitialScores(store.t0));
-    const milestoneLabel = MILESTONE_OPTIONS.find(m => m.code === selectedMilestone)?.label || selectedMilestone;
-    setSavedNotice(`Verifica «${milestoneLabel}» salvata localmente sul dispositivo.`);
+    const milestoneLabel = MILESTONE_OPTIONS.find((m) => m.code === selectedMilestone)?.label || selectedMilestone;
+    setSavedNotice(
+      canUseVerifiedCloud
+        ? `Verifica «${milestoneLabel}» salvata su Firestore.`
+        : `Verifica «${milestoneLabel}» salvata localmente sul dispositivo.`
+    );
+  };
+
+  // Avvia un nuovo ciclo senza modificare la T0 esistente su Firestore
+  const handleStartNewCycle = () => {
+    setConfirmingNewCycle(false);
+    setConfirmingDeleteCycle(false);
+    setVerifiedAck(false);
+    setConfirmingT0(false);
+    setActionError(null);
+
+    if (canUseVerifiedCloud) {
+      setCloudState((prev) => ({
+        ...prev,
+        store: {
+          t0: null,
+          checkins: [],
+          nextCycleNumber: prev.totalCycles + 1,
+        },
+      }));
+    } else {
+      setLocalStore((prev) => ({
+        t0: null,
+        checkins: [],
+        nextCycleNumber: (prev.t0?.cycleNumber || 0) + 1,
+      }));
+    }
+
+    setScores(createInitialScores(null));
+    setSavedNotice('Pronto per un nuovo ciclo: la T0 precedente non è stata modificata. Verifica o ripeti i test e fissa la nuova T0.');
+  };
+
+  // Eliminazione esplicita dell'intero ciclo (senza mai fare update su T0)
+  const handleDeleteCurrentCycle = async () => {
+    if (!store.t0 || savingRemote) return;
+    setActionError(null);
+
+    if (canUseVerifiedCloud && store.t0.source === 'firestore') {
+      setSavingRemote(true);
+      try {
+        await deleteCycleFromFirestore(
+          store.t0.cycleId,
+          store.checkins.map((c) => c.id)
+        );
+      } catch {
+        setActionError('Impossibile eliminare il ciclo da Firestore. Riprova.');
+        setSavingRemote(false);
+        return;
+      }
+      setSavingRemote(false);
+      setCloudState((prev) => ({
+        ...prev,
+        store: {
+          t0: null,
+          checkins: [],
+          nextCycleNumber: Math.max(1, prev.totalCycles),
+        },
+        totalCycles: Math.max(0, prev.totalCycles - 1),
+      }));
+    } else {
+      setLocalStore({
+        t0: null,
+        checkins: [],
+        nextCycleNumber: 1,
+      });
+    }
+
+    setConfirmingDeleteCycle(false);
+    setConfirmingNewCycle(false);
+    setVerifiedAck(false);
+    setScores(createInitialScores(null));
+    setSavedNotice('Ciclo eliminato completamente. Puoi ripartire dai test e fissare una nuova T0.');
   };
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 pb-12 animate-fadeIn">
-      {/* Barra superiore di navigazione e badge In prova */}
+      {/* Barra superiore di navigazione e stato Cloud/Locale */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <button
           type="button"
@@ -242,9 +378,20 @@ const Fase3Prova: React.FC<ScreenProps> = ({ setPage }) => {
         >
           &larr; Torna alla Consolle
         </button>
-        <span className="text-xs font-bold uppercase tracking-wider text-amber-900 bg-amber-100 border border-amber-300 px-3 py-1.5 rounded-lg">
-          Fase 3 • In prova (solo locale)
-        </span>
+        <div className="flex flex-wrap items-center gap-2">
+          <span
+            className={`text-xs font-bold px-3 py-1.5 rounded-lg border ${
+              canUseVerifiedCloud
+                ? 'bg-emerald-50 text-emerald-900 border-emerald-300'
+                : 'bg-slate-100 text-slate-700 border-slate-300'
+            }`}
+          >
+            {canUseVerifiedCloud ? '🔒 Firestore Immutabile (Cloud)' : '📱 Solo locale sul dispositivo'}
+          </span>
+          <span className="text-xs font-bold uppercase tracking-wider text-amber-900 bg-amber-100 border border-amber-300 px-3 py-1.5 rounded-lg">
+            Fase 3 • In prova
+          </span>
+        </div>
       </div>
 
       {/* Intestazione informativa */}
@@ -259,14 +406,53 @@ const Fase3Prova: React.FC<ScreenProps> = ({ setPage }) => {
               T0 è la fotografia del tuo punto di partenza
             </p>
             <p className="text-sm text-slate-700 leading-relaxed">
-              Questa funzione è attiva esclusivamente in locale sul tuo dispositivo (nessun dato viene inviato a Firestore). Permette di fissare una fotografia iniziale <strong>T0</strong> non modificabile da questa schermata e registrare verifiche successive su scala <strong>0–10</strong>.
+              {canUseVerifiedCloud
+                ? 'Sei autenticato: una volta validati i 5 test della Fase 1 e confermata T0, il database Firestore blocca tecnicamente ogni modifica o sovrascrittura della linea di base T0.'
+                : 'Stai usando la modalità locale sul dispositivo. Accedi con account verificato se desideri salvare e proteggere T0 su Firestore.'}
             </p>
           </div>
         </div>
+
+        {!user && (
+          <div className="p-3.5 rounded-xl bg-indigo-50 border border-indigo-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <span className="text-xs sm:text-sm text-indigo-950">
+              Accedi per proteggere in modo immutabile la tua fotografia <strong>T0</strong> anche su Firestore.
+            </span>
+            <button
+              type="button"
+              onClick={openAuthModal}
+              className="self-start sm:self-center px-3.5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs whitespace-nowrap transition"
+            >
+              Accedi
+            </button>
+          </div>
+        )}
+
+        {user && !user.emailVerified && (
+          <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-300 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <span className="text-xs sm:text-sm text-amber-950">
+              La tua email non risulta ancora verificata: verifica l&apos;email per salvare T0 su Firestore (nel frattempo i dati restano in locale).
+            </span>
+            <button
+              type="button"
+              onClick={handleResendVerification}
+              className="self-start sm:self-center px-3.5 py-2 rounded-lg bg-white hover:bg-amber-100 text-amber-950 font-bold text-xs border border-amber-300 whitespace-nowrap transition"
+            >
+              Invia di nuovo email
+            </button>
+          </div>
+        )}
+
         <p className="text-xs text-slate-600 bg-slate-50 border border-slate-200 rounded-xl p-3">
           Strumento di autoconoscenza e auto-osservazione secondo le Discipline Analogiche (Legge 4/2013): non fornisce diagnosi mediche o psicologiche né garanzie cliniche.
         </p>
       </section>
+
+      {cloudSyncError && (
+        <div className="bg-red-50 border border-red-300 text-red-900 rounded-xl p-4 text-sm font-semibold">
+          ⚠️ {cloudSyncError}
+        </div>
+      )}
 
       {savedNotice && (
         <div className="bg-emerald-50 border border-emerald-300 text-emerald-900 rounded-xl p-4 text-sm font-semibold flex items-center justify-between gap-3">
@@ -281,118 +467,182 @@ const Fase3Prova: React.FC<ScreenProps> = ({ setPage }) => {
         </div>
       )}
 
-      {/* ========================================================= */}
-      {/* SEZIONE 1: FOTOGRAFIA INIZIALE T0                         */}
-      {/* ========================================================= */}
-      {!activeT0 ? (
-        <section className="bg-white rounded-2xl border-2 border-indigo-200 shadow-sm p-5 sm:p-6 space-y-4">
+      {cloudLoading ? (
+        <div className="bg-white rounded-2xl border border-slate-200 p-10 flex justify-center">
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600"></div>
+        </div>
+      ) : !activeT0 ? (
+        /* ========================================================= */
+        /* SEZIONE 1: VALIDAZIONE & RIEPILOGO PRE-BLOCCO T0          */
+        /* ========================================================= */
+        <section className="bg-white rounded-2xl border-2 border-indigo-200 shadow-sm p-5 sm:p-6 space-y-5">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
             <div>
               <h2 className="font-serif font-bold text-lg sm:text-xl text-slate-900">
-                1. Riepilogo per Fotografia Iniziale (T0)
+                1. Verifica e convalida prima di congelare T0
               </h2>
               <p className="text-xs sm:text-sm text-slate-600">
-                Controlla i dati rilevati sul dispositivo prima di fissare T0.
+                Finché non congeli T0, puoi ripetere qualsiasi test se qualcosa non ti convince.
               </p>
             </div>
-            <span className="self-start sm:self-center text-xs font-bold text-indigo-800 bg-indigo-50 border border-indigo-200 px-2.5 py-1 rounded-lg">
-              Anteprima locale
+            <span
+              className={`self-start sm:self-center text-xs font-bold px-2.5 py-1 rounded-lg border ${
+                isPhase1Valid
+                  ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                  : 'bg-amber-50 text-amber-900 border-amber-200'
+              }`}
+            >
+              {isPhase1Valid ? '✓ Tutti i 5 test validi' : 'Bozza da completare / verificare'}
             </span>
           </div>
 
-          {/* Riepilogo delle 5 aree */}
-          <div className="space-y-2">
+          {/* Controllo qualità su tutti e 5 i test della Fase 1 con pulsante "Ripeti test" */}
+          <div className="space-y-2.5">
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
-              Punti Distonici attuali
+              Stato dei 5 test della Fase 1
             </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              {PUNTI_DISTONICI_META.map(({ key, label }) => {
-                const status = formatAreaStatus(draftT0.puntiDistonici[key]);
+            <div className="space-y-2.5">
+              {validation.items.map((item) => {
+                const isOk = item.status === 'valid';
+                const isIncomplete = item.status === 'incomplete';
                 return (
                   <div
-                    key={key}
-                    className="flex items-center justify-between gap-2 p-3 rounded-xl bg-slate-50 border border-slate-200 text-sm"
+                    key={item.id}
+                    className={`p-3.5 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                      isOk
+                        ? 'bg-emerald-50/50 border-emerald-200'
+                        : isIncomplete
+                          ? 'bg-amber-50 border-amber-300'
+                          : 'bg-slate-50 border-slate-200'
+                    }`}
                   >
-                    <span className="font-medium text-slate-800">{label}</span>
-                    <span className="text-xs font-bold px-2.5 py-1 rounded-md bg-white border border-slate-200 text-slate-700 whitespace-nowrap">
-                      {status}
-                    </span>
+                    <div className="space-y-0.5 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-bold text-sm text-slate-900">{item.label}</span>
+                        <span
+                          className={`text-[11px] font-bold px-2 py-0.5 rounded border ${
+                            isOk
+                              ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                              : isIncomplete
+                                ? 'bg-amber-100 text-amber-900 border-amber-300'
+                                : 'bg-slate-200 text-slate-700 border-slate-300'
+                          }`}
+                        >
+                          {isOk ? 'Valido' : isIncomplete ? 'Da ripetere' : 'Mancante'}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-700">{item.summaryText}</p>
+                      {item.reason && (
+                        <p className="text-xs font-semibold text-amber-900 mt-1">{item.reason}</p>
+                      )}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setPage(item.id)}
+                      className={`self-start sm:self-center px-3.5 py-2 rounded-lg text-xs font-bold border whitespace-nowrap transition ${
+                        isOk
+                          ? 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300'
+                          : 'bg-indigo-600 hover:bg-indigo-700 text-white border-indigo-700'
+                      }`}
+                    >
+                      {item.status === 'missing' ? 'Esegui test →' : 'Ripeti test →'}
+                    </button>
                   </div>
                 );
               })}
             </div>
           </div>
 
-          {/* Riepilogo sintetico altri test */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-sm">
-            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
-              <div className="text-xs font-bold uppercase text-slate-500">T.A.P. &amp; Induttore</div>
-              <div className="font-semibold text-slate-800 mt-1">
-                {draftT0.tapTipologia || 'T.A.P. non rilevato'} • Induttore: {draftT0.induttoreResult || 'Non rilevato'}
+          {/* Dettaglio delle 5 aree Punti Distonici */}
+          <div className="space-y-2">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+              Dettaglio aree Punti Distonici in bozza
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {PUNTI_DISTONICI_META.map(({ key, label }) => (
+                <div
+                  key={key}
+                  className="flex items-center justify-between gap-2 p-3 rounded-xl bg-slate-50 border border-slate-200 text-sm"
+                >
+                  <span className="font-medium text-slate-800">{label}</span>
+                  <span className="text-xs font-bold px-2.5 py-1 rounded-md bg-white border border-slate-200 text-slate-700 whitespace-nowrap">
+                    {formatAreaStatus(userData.puntiDistonici?.[key])}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Riepilogo opzionale Fase 2 con pulsante Ripeti */}
+          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-sm">
+            <div>
+              <div className="text-xs font-bold uppercase text-slate-500">Indietro nel Tempo (facoltativo in T0)</div>
+              <div className="font-semibold text-slate-800 mt-0.5">
+                Età: {userData.timeLine?.etaEventoCausa || 'N/D'} • Giorno: {userData.giornoEvento || 'N/D'} • Testimone: {userData.testimoneChiave || 'N/D'}
               </div>
             </div>
-            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
-              <div className="text-xs font-bold uppercase text-slate-500">Indietro nel Tempo</div>
-              <div className="font-semibold text-slate-800 mt-1">
-                Età: {draftT0.etaEventoCausa || 'N/D'} • Giorno: {draftT0.giornoEvento || 'N/D'} • Testimone: {draftT0.testimoneChiave || 'N/D'}
-              </div>
-            </div>
+            <button
+              type="button"
+              onClick={() => setPage('indagineSingola')}
+              className="self-start sm:self-center px-3.5 py-2 rounded-lg bg-white hover:bg-slate-100 text-slate-700 font-bold text-xs border border-slate-300 whitespace-nowrap transition"
+            >
+              Ripeti / Esegui Indagine →
+            </button>
           </div>
 
           <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-xs sm:text-sm text-amber-950 leading-relaxed">
-            <strong>Attenzione:</strong> una volta fissata, la fotografia <strong>T0</strong> viene salvata sul dispositivo e <strong>non potrà più essere modificata</strong> da questa schermata. Le aree segnate «Non applicabile» resteranno escluse dalle verifiche periodiche.
+            <strong>Immutabilità di T0:</strong> una volta congelata, la fotografia <strong>T0</strong> non potrà più essere modificata né sovrascritta (blocco tecnico su database). Le aree segnate «Non applicabile» resteranno escluse dalle verifiche successive.
           </div>
 
-          {!isPhase1Complete && (
-            <div className="p-4 rounded-xl bg-blue-50 border border-blue-200 space-y-2.5 text-xs sm:text-sm text-blue-950">
-              <p className="font-bold">
-                Per fissare T0 devi prima completare tutti i 5 test della Fase 1. Mancano ancora:
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {missingPhase1Tests.map((test) => (
-                  <button
-                    key={test.id}
-                    type="button"
-                    onClick={() => setPage(test.id)}
-                    className="px-3 py-1.5 rounded-lg bg-white hover:bg-blue-100 text-blue-900 font-bold text-xs border border-blue-300 transition"
-                  >
-                    {test.label} →
-                  </button>
-                ))}
-              </div>
-            </div>
+          {isPhase1Valid && (
+            <label className="flex items-start gap-2.5 p-3.5 rounded-xl bg-indigo-50/70 border border-indigo-200 cursor-pointer text-xs sm:text-sm text-indigo-950">
+              <input
+                type="checkbox"
+                checked={verifiedAck}
+                onChange={(e) => {
+                  setVerifiedAck(e.target.checked);
+                  if (!e.target.checked) setConfirmingT0(false);
+                }}
+                className="mt-0.5 h-4 w-4 rounded border-indigo-400 text-indigo-600 focus:ring-indigo-500"
+              />
+              <span>
+                <strong>Ho controllato tutti i risultati dei 5 test</strong> e confermo di voler congelare definitivamente la Fotografia Iniziale T0.
+              </span>
+            </label>
           )}
 
-          {!confirmingT0 || !isPhase1Complete ? (
+          {!confirmingT0 || !isPhase1Valid || !verifiedAck ? (
             <div className="flex flex-col sm:flex-row gap-3 pt-1">
               <button
                 type="button"
                 onClick={() => setPage(0)}
                 className="px-4 py-3 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-800 font-bold text-sm transition"
               >
-                Torna ai test di Fase 1
+                Torna alla Consolle
               </button>
               <button
                 type="button"
-                disabled={!isPhase1Complete}
+                disabled={!isPhase1Valid || !verifiedAck || savingRemote}
                 onClick={() => setConfirmingT0(true)}
                 className={`px-5 py-3 rounded-xl font-bold text-sm transition shadow-sm ${
-                  isPhase1Complete
+                  isPhase1Valid && verifiedAck && !savingRemote
                     ? 'bg-indigo-600 hover:bg-indigo-700 text-white'
                     : 'bg-slate-200 text-slate-500 cursor-not-allowed'
                 }`}
               >
-                Fissa come Fotografia Iniziale (T0)
+                Congela Fotografia Iniziale (T0)
               </button>
             </div>
           ) : (
             <div className="p-4 rounded-xl bg-indigo-50 border-2 border-indigo-300 space-y-3">
               <p className="text-sm font-bold text-indigo-950">
-                Confermi di voler salvare ora la Fotografia Iniziale T0 sul dispositivo? Dopo la conferma non sarà modificabile da questa schermata.
+                Conferma finale: vuoi bloccare ora la Fotografia Iniziale T0{canUseVerifiedCloud ? ' su Firestore' : ' sul dispositivo'}? Dopo il salvataggio non sarà più modificabile.
               </p>
               <div className="flex flex-wrap gap-3">
                 <button
                   type="button"
+                  disabled={savingRemote}
                   onClick={() => setConfirmingT0(false)}
                   className="px-4 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-800 font-bold text-sm"
                 >
@@ -400,10 +650,11 @@ const Fase3Prova: React.FC<ScreenProps> = ({ setPage }) => {
                 </button>
                 <button
                   type="button"
+                  disabled={savingRemote}
                   onClick={handleLockT0}
-                  className="px-5 py-2.5 rounded-xl bg-indigo-700 hover:bg-indigo-800 text-white font-bold text-sm shadow"
+                  className="px-5 py-2.5 rounded-xl bg-indigo-700 hover:bg-indigo-800 text-white font-bold text-sm shadow disabled:opacity-60"
                 >
-                  Conferma e blocca T0
+                  {savingRemote ? 'Salvataggio in corso...' : 'Conferma e congela T0'}
                 </button>
               </div>
             </div>
@@ -411,15 +662,15 @@ const Fase3Prova: React.FC<ScreenProps> = ({ setPage }) => {
         </section>
       ) : (
         <>
-          {/* T0 BLOCCATA IN SOLA LETTURA */}
+          {/* T0 CONGELATA IN SOLA LETTURA */}
           <section className="bg-white rounded-2xl border-2 border-slate-300 shadow-sm p-5 sm:p-6 space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
               <div>
                 <h2 className="font-serif font-bold text-lg sm:text-xl text-slate-900">
-                  1. Fotografia Iniziale (T0)
+                  1. Fotografia Iniziale (T0 — Ciclo #{activeT0.cycleNumber})
                 </h2>
                 <p className="text-xs sm:text-sm text-slate-600">
-                  Salvata sul dispositivo il {formatDateTimeIt(activeT0.createdAtIso)}
+                  Congelata il {formatDateTimeIt(activeT0.createdAtIso)} ({activeT0.source === 'firestore' ? 'Firestore immutabile' : 'Locale sul dispositivo'})
                 </p>
               </div>
               <span className="self-start sm:self-center text-xs font-bold text-slate-800 bg-slate-100 border border-slate-300 px-3 py-1 rounded-lg">
@@ -443,17 +694,90 @@ const Fase3Prova: React.FC<ScreenProps> = ({ setPage }) => {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs sm:text-sm text-slate-700">
               <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
-                <strong>Sigilli emersi:</strong>{' '}
-                {SIGILLI_META.filter(({ key }) => activeT0.sigilli[key] === 'SI').map(s => s.label).join(', ') ||
-                  (SIGILLI_META.every(({ key }) => activeT0.sigilli[key] === 'NO')
-                    ? 'Nessuno nelle risposte'
-                    : 'Parziale o non rilevato')}
+                <strong>T.A.P. / Sigilli emersi:</strong> {activeT0.tapTipologia || 'N/D'} •{' '}
+                {SIGILLI_META.filter(({ key }) => activeT0.sigilli[key] === 'SI').map((s) => s.label).join(', ') ||
+                  'Nessun sigillo nelle risposte'}
               </div>
               <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
-                <strong>Induttore / Indietro nel Tempo:</strong>{' '}
-                {activeT0.induttoreResult || 'N/D'} • Età {activeT0.etaEventoCausa || 'N/D'} • {activeT0.giornoEvento || 'N/D'} • {activeT0.testimoneChiave || 'N/D'}
+                <strong>Induttore / Indietro nel Tempo:</strong> {activeT0.induttoreResult || 'N/D'} • Età{' '}
+                {activeT0.etaEventoCausa || 'N/D'} • {activeT0.giornoEvento || 'N/D'} •{' '}
+                {activeT0.testimoneChiave || 'N/D'}
               </div>
             </div>
+
+            {/* Azioni non distruttive di T0: nuovo ciclo (separato) oppure eliminazione completa */}
+            <div className="pt-2 border-t border-slate-100 flex flex-wrap gap-2.5">
+              <button
+                type="button"
+                onClick={() => {
+                  setConfirmingNewCycle((v) => !v);
+                  setConfirmingDeleteCycle(false);
+                }}
+                className="px-3.5 py-2 rounded-xl border border-indigo-300 bg-indigo-50 hover:bg-indigo-100 text-indigo-900 font-bold text-xs transition"
+              >
+                Avvia nuovo ciclo (nuova T0)
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setConfirmingDeleteCycle((v) => !v);
+                  setConfirmingNewCycle(false);
+                }}
+                className="px-3.5 py-2 rounded-xl border border-red-200 bg-red-50 hover:bg-red-100 text-red-800 font-bold text-xs transition"
+              >
+                Elimina questo ciclo
+              </button>
+            </div>
+
+            {confirmingNewCycle && (
+              <div className="p-3.5 rounded-xl bg-indigo-50 border border-indigo-200 space-y-2.5 text-xs sm:text-sm text-indigo-950">
+                <p className="font-semibold">
+                  La T0 attuale resterà salvata e intatta; potrai ripetere o aggiornare i test e fissare una nuova T0 per il ciclo successivo. Vuoi procedere?
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setConfirmingNewCycle(false)}
+                    className="px-3 py-1.5 rounded-lg bg-white border border-slate-300 text-slate-700 font-bold text-xs"
+                  >
+                    Annulla
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleStartNewCycle}
+                    className="px-3.5 py-1.5 rounded-lg bg-indigo-600 text-white font-bold text-xs"
+                  >
+                    Conferma nuovo ciclo
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {confirmingDeleteCycle && (
+              <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 space-y-2.5 text-xs sm:text-sm text-red-950">
+                <p className="font-semibold">
+                  Attenzione: questa operazione elimina definitivamente questa T0 e tutte le sue verifiche collegate (operazione irreversibile). Confermi?
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    disabled={savingRemote}
+                    onClick={() => setConfirmingDeleteCycle(false)}
+                    className="px-3 py-1.5 rounded-lg bg-white border border-slate-300 text-slate-700 font-bold text-xs"
+                  >
+                    Annulla
+                  </button>
+                  <button
+                    type="button"
+                    disabled={savingRemote}
+                    onClick={handleDeleteCurrentCycle}
+                    className="px-3.5 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white font-bold text-xs disabled:opacity-60"
+                  >
+                    {savingRemote ? 'Eliminazione...' : 'Elimina definitivamente'}
+                  </button>
+                </div>
+              </div>
+            )}
           </section>
 
           {/* ========================================================= */}
@@ -548,7 +872,7 @@ const Fase3Prova: React.FC<ScreenProps> = ({ setPage }) => {
                             <button
                               key={num}
                               type="button"
-                              onClick={() => setScores(prev => ({ ...prev, [key]: num }))}
+                              onClick={() => setScores((prev) => ({ ...prev, [key]: num }))}
                               className={`py-2 rounded-lg text-xs font-bold border transition ${
                                 selected
                                   ? 'bg-emerald-600 text-white border-emerald-700 shadow-xs'
@@ -569,7 +893,7 @@ const Fase3Prova: React.FC<ScreenProps> = ({ setPage }) => {
             {missingScoreAreas.length > 0 && (
               <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-xs sm:text-sm text-amber-950">
                 Seleziona un valore esplicito da <strong>0</strong> a <strong>10</strong> per ogni area applicabile prima di salvare (mancano:{' '}
-                <strong>{missingScoreAreas.map(a => a.label).join(', ')}</strong>).
+                <strong>{missingScoreAreas.map((a) => a.label).join(', ')}</strong>).
               </div>
             )}
 
@@ -584,7 +908,11 @@ const Fase3Prova: React.FC<ScreenProps> = ({ setPage }) => {
                     : 'bg-slate-200 text-slate-500 cursor-not-allowed shadow-none'
                 }`}
               >
-                Salva verifica sul dispositivo
+                {savingRemote
+                  ? 'Salvataggio in corso...'
+                  : canUseVerifiedCloud
+                    ? 'Salva verifica su Firestore'
+                    : 'Salva verifica sul dispositivo'}
               </button>
             </div>
           </section>
@@ -595,7 +923,7 @@ const Fase3Prova: React.FC<ScreenProps> = ({ setPage }) => {
           <section className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-6 space-y-4">
             <div className="border-b border-slate-100 pb-3">
               <h2 className="font-serif font-bold text-lg sm:text-xl text-slate-900">
-                3. Confronto T0 vs Verifiche locali ({store.checkins.length})
+                3. Confronto T0 vs Verifiche ({store.checkins.length})
               </h2>
             </div>
 
@@ -611,7 +939,7 @@ const Fase3Prova: React.FC<ScreenProps> = ({ setPage }) => {
                       <th className="py-2 pr-3 font-bold">Area</th>
                       <th className="py-2 px-3 font-bold bg-slate-50">T0 (Bloccata)</th>
                       {store.checkins.map((chk) => {
-                        const label = MILESTONE_OPTIONS.find(m => m.code === chk.milestone)?.label || chk.milestone;
+                        const label = MILESTONE_OPTIONS.find((m) => m.code === chk.milestone)?.label || chk.milestone;
                         return (
                           <th key={chk.id} className="py-2 px-3 font-bold whitespace-nowrap">
                             <div>{label}</div>
