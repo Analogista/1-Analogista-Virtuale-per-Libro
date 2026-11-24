@@ -9,7 +9,7 @@ import { LogIn, LogOut, User, X } from 'lucide-react';
 
 const Header: React.FC = () => {
   const { title, subtitle } = useHeader();
-  const { user, loginWithGoogle, logout, error, clearError } = useAuth();
+  const { user, openAuthModal, logout, error, clearError } = useAuth();
   const { resetUserData } = useUser();
   const navigate = useNavigate();
   const isDashboard = title === 'Analogista Virtuale di Max Pisani' || !title;
@@ -67,7 +67,7 @@ const Header: React.FC = () => {
           </div>
         ) : (
           <button 
-            onClick={loginWithGoogle}
+            onClick={openAuthModal}
             className="flex items-center gap-2 text-xs bg-white text-blue-600 font-bold px-3 py-2 rounded-lg hover:bg-blue-50 transition-colors shadow-md"
           >
             <LogIn size={14} />

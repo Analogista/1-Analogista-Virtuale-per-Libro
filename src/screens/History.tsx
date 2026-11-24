@@ -17,7 +17,7 @@ interface SavedSession {
 }
 
 const History: React.FC = () => {
-  const { user, isAdmin, loginWithGoogle } = useAuth();
+  const { user, isAdmin, openAuthModal } = useAuth();
   const { setUserData } = useUser();
   const [sessions, setSessions] = useState<SavedSession[]>([]);
   const [loading, setLoading] = useState(true);
@@ -107,11 +107,11 @@ const History: React.FC = () => {
           </div>
           <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">Accesso richiesto</h2>
           <p className="text-sm sm:text-base text-gray-600 mb-6 max-w-md leading-relaxed">
-            Accedi con il tuo account Google per vedere le analisi salvate in precedenza.
+            Accedi con Google o con la tua email per vedere le analisi salvate in precedenza.
           </p>
           <button
             type="button"
-            onClick={loginWithGoogle}
+            onClick={openAuthModal}
             className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-3 rounded-xl shadow transition text-sm sm:text-base"
           >
             <LogIn size={18} />

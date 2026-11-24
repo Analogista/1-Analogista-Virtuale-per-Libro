@@ -2,6 +2,7 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { AdvancedVoiceService } from '../services/AdvancedVoiceService';
+import { useAuth } from '../contexts/AuthContext';
 
 const NavItem: React.FC<{
   Icon: React.ReactElement;
@@ -50,9 +51,16 @@ const HistoryIcon: React.FC<{ isActive: boolean }> = ({ isActive }) => (
     </svg>
 );
 
+const AdminIcon: React.FC<{ isActive: boolean }> = ({ isActive }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill={isActive ? "currentColor" : "none"} viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+    </svg>
+);
+
 const BottomNav: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { isAdmin } = useAuth();
   const currentPath = location.pathname;
 
   const handleNav = (path: string) => {
@@ -74,6 +82,12 @@ const BottomNav: React.FC = () => {
       <NavItem Icon={<HistoryIcon isActive={currentPath === '/history'} />} label="Storico" isActive={currentPath === '/history'} onClick={() => handleNav('/history')} />
       <div className="w-px h-8 bg-gray-200 flex-shrink-0"></div>
       <NavItem Icon={<ContactIcon isActive={currentPath === '/contatti'} />} label="Contatti" isActive={currentPath === '/contatti'} onClick={() => handleNav('/contatti')} />
+      {isAdmin && (
+        <>
+          <div className="w-px h-8 bg-gray-200 flex-shrink-0"></div>
+          <NavItem Icon={<AdminIcon isActive={currentPath === '/admin'} />} label="Admin" isActive={currentPath === '/admin'} onClick={() => handleNav('/admin')} />
+        </>
+      )}
     </nav>
   );
 };

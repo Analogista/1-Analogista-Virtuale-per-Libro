@@ -14,6 +14,7 @@ import Risultati from './screens/Risultati';
 import Contatti from './screens/Contatti';
 import VideoCorso from './screens/LiveChat';
 import History from './screens/History';
+import Admin from './screens/Admin';
 import { AdvancedVoiceService } from './services/AdvancedVoiceService';
 
 import { AuthGate } from './components/AuthGate';
@@ -68,6 +69,9 @@ const AppContent: React.FC = () => {
       case '/contatti':
         setHeader('Contatti', 'Richiedi una consulenza professionale');
         break;
+      case '/admin':
+        setHeader('Area Admin', 'Gestione autorizzazioni all’accesso');
+        break;
       default:
         break;
     }
@@ -95,6 +99,7 @@ const AppContent: React.FC = () => {
               <Route path="/chat" element={<VideoCorso />} />
               <Route path="/history" element={<History />} />
               <Route path="/contatti" element={<Contatti />} />
+              <Route path="/admin" element={<Admin />} />
             </Routes>
           </main>
 
